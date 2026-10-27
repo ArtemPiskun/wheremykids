@@ -25,7 +25,8 @@ npm run test:e2e         # e2e на demoidity_test і Redis db 1, секрети
 ## Інструменти
 
 - `scripts/smoke.sh`: батьківський сценарій через curl (потрібен `jq`), друкує код інвайту.
-- `npm run simulate:child -- --code XXXX-XXXX [--api URL] [--interval 10] [--sos-after N]`: віртуальна дитина.
+- `npm run simulate:child -- --code XXXX-XXXX [--api URL] [--interval 10] [--sos-after N] [--offline-after N --offline-for M]`: віртуальна дитина з локальною чергою точок.
+- `npm run scenario [-- --api URL]`: увесь критичний сценарій MVP з перевірками (батько, дитина, зони, обрив мережі, SOS).
 
 ## API (v1)
 
