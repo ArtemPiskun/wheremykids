@@ -1,0 +1,9 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <!-- The parent app never reads its own location or the camera. Both plugins ship in the
+         shared codebase, so strip what their manifests would merge in. -->
+    <uses-permission android:name="android.permission.CAMERA" tools:node="remove"/>
+    <application>
+        <service android:name="com.baseflow.geolocator.GeolocatorLocationService" tools:node="remove"/>
+    </application>
+</manifest>
