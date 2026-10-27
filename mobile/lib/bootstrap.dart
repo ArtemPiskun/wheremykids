@@ -5,10 +5,12 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'app/app.dart';
 import 'app/flavor.dart';
 import 'app/providers.dart';
+import 'core/config/env.dart';
 import 'features/auth/application/auth_controller.dart';
 
 Future<void> bootstrap(AppFlavor flavor) async {
   WidgetsFlutterBinding.ensureInitialized();
+  Env.assertReleaseConfig();
   await Future.wait([initializeDateFormatting('uk'), initializeDateFormatting('ru'), initializeDateFormatting('en')]);
   final container = ProviderContainer(overrides: [flavorProvider.overrideWithValue(flavor)]);
   await container.read(authControllerProvider).bootstrap();

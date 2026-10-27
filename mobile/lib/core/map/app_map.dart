@@ -104,7 +104,7 @@ class AppMap extends StatelessWidget {
             for (final p in pins) Marker(key: ValueKey(p.id), point: p.point, width: p.size, height: p.size + 22, child: p.child),
           ],
         ),
-        const RichAttributionWidget(attributions: [TextSourceAttribution(Env.mapAttribution)]),
+        RichAttributionWidget(attributions: [TextSourceAttribution(Env.tileAttribution)]),
       ],
     );
   }

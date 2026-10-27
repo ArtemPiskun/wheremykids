@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 /// Build-time configuration, passed with `--dart-define` (see mobile/README.md).
 /// Nothing secret lives here: API keys for tiles are restricted to the app's bundle id.
 class Env {
@@ -18,5 +20,26 @@ class Env {
   static const privacyPolicyVersion = '2026-10';
   static const privacyPolicyUrl = String.fromEnvironment('PRIVACY_URL', defaultValue: 'https://demoidity.ua/privacy');
 
-  static String get tileUrl => mapTileUrl.replaceAll('{key}', mapTileKey);
+  /// Debug builds without a MapTiler key fall back to the public OSM tiles, so the map works
+  /// on a developer's machine out of the box. Their usage policy allows only light, non-commercial
+  /// use, hence never in release.
+  static const _osmDevTiles = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+
+  static String get tileUrl {
+    if (mapTileKey.isEmpty && !kReleaseMode && mapTileUrl.contains('{key}')) return _osmDevTiles;
+    return mapTileUrl.replaceAll('{key}', mapTileKey);
+  }
+
+  static String get tileAttribution => tileUrl == _osmDevTiles ? '© OpenStreetMap contributors' : mapAttribution;
+
+  /// Fails fast on a release build that would talk to a dev server or over plain HTTP.
+  static void assertReleaseConfig() {
+    if (!kReleaseMode) return;
+    if (!apiUrl.startsWith('https://')) {
+      throw StateError('Release builds need --dart-define=API_URL=https://... (got "$apiUrl")');
+    }
+    if (mapTileKey.isEmpty && mapTileUrl.contains('{key}')) {
+      throw StateError('Release builds need --dart-define=MAP_TILE_KEY=...');
+    }
+  }
 }
