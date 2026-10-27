@@ -57,6 +57,40 @@ void main() {
     await sync.dispose();
   });
 
+  test('network coming back uploads at once, even deep into the backoff', () async {
+    for (var i = 0; i < 3; i++) {
+      await queue.enqueue(fix(10 - i), MotionState.moving);
+    }
+    var online = false;
+    final sync = SyncService(
+      queue: queue,
+      upload: (points, {battery, charging}) async {
+        if (!online) throw const UploadException(UploadFailure.retryable, 'offline');
+      },
+    );
+    // Several failed attempts: the next automatic retry is now minutes away.
+    for (var i = 0; i < 6; i++) {
+      await sync.flush();
+    }
+    expect(await queue.count(), 3);
+
+    online = true;
+    await sync.kick().timeout(const Duration(seconds: 1));
+    expect(await queue.count(), 0);
+    await sync.dispose();
+  });
+
+  test('an expired session keeps the points for after the refresh', () async {
+    await queue.enqueue(fix(2), MotionState.moving);
+    final sync = SyncService(
+      queue: queue,
+      upload: (_, {battery, charging}) async => throw const UploadException(UploadFailure.unauthorized, 'TOKEN_INVALID'),
+    );
+    await sync.flush();
+    expect(await queue.count(), 1);
+    await sync.dispose();
+  });
+
   test('a batch the server rejects permanently is dropped instead of blocking the queue', () async {
     await queue.enqueue(fix(2), MotionState.moving);
     final sync = SyncService(queue: queue, upload: (_, {battery, charging}) async => throw const UploadException(UploadFailure.permanent, 'VALIDATION_FAILED'));

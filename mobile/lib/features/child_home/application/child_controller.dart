@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui' show PlatformDispatcher;
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/widgets.dart' show basicLocaleListResolution;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
@@ -117,6 +118,10 @@ class ChildController extends AsyncNotifier<ChildState> {
         if (c == RtConnection.connected) unawaited(_sync?.kick());
       }))
       ..add(rt.events.listen(_onEvent))
+      // Network is back: upload the queued points now instead of waiting out the backoff (up to 5 min).
+      ..add(Connectivity().onConnectivityChanged.listen((r) {
+        if (r.any((c) => c != ConnectivityResult.none)) unawaited(_sync?.kick());
+      }))
       ..add(ref.read(pushServiceProvider).dataMessages.listen((m) {
         if (m['type'] == 'location_request') unawaited(_tracking?.answerLocationRequest());
       }));
