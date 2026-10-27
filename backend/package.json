@@ -16,6 +16,7 @@
     "test": "jest --selectProjects unit",
     "test:e2e": "jest --selectProjects e2e --runInBand",
     "simulate:child": "node dist/tools/simulate-child.js",
+    "scenario": "node dist/tools/scenario.js",
     "gen:secrets": "node scripts/gen-secrets.js"
   },
   "dependencies": {
