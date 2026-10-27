@@ -1,0 +1,234 @@
+{
+  "@@locale": "uk",
+  "appTitle": "Де мої діти",
+  "childAppTitle": "Де мої діти: Дитина",
+  "retry": "Спробувати ще",
+  "cancel": "Скасувати",
+  "save": "Зберегти",
+  "delete": "Видалити",
+  "create": "Створити",
+  "next": "Далі",
+  "errorNetwork": "Немає з'єднання з інтернетом. Дані оновляться, щойно зв'язок повернеться.",
+  "errorGeneric": "Щось пішло не так. Спробуйте ще раз.",
+  "signIn": "Увійти",
+  "signUp": "Створити акаунт",
+  "email": "Електронна пошта",
+  "password": "Пароль",
+  "passwordHint": "Щонайменше 10 символів",
+  "yourName": "Ваше ім'я",
+  "acceptPrivacy": "Я приймаю політику конфіденційності",
+  "haveAccount": "Вже маєте акаунт? Увійти",
+  "noAccount": "Немає акаунта? Зареєструватися",
+  "invalidCredentials": "Неправильна пошта або пароль",
+  "emailTaken": "Акаунт з цією поштою вже існує",
+  "invalidEmail": "Перевірте адресу пошти",
+  "tooManyAttempts": "Забагато спроб. Зачекайте хвилину.",
+  "logout": "Вийти",
+  "createFamilyTitle": "Створіть сім'ю",
+  "familyName": "Назва сім'ї",
+  "familyNameHint": "Наприклад, Коваленки",
+  "addChild": "Додати дитину",
+  "childName": "Ім'я дитини",
+  "birthYear": "Рік народження",
+  "childPhone": "Номер телефону дитини",
+  "phoneHint": "+380 67 123 45 67",
+  "invalidPhone": "Введіть номер у форматі +380 67 123 45 67",
+  "planLimit": "На вашому тарифі ліміт вичерпано. Перейдіть на Преміум, щоб додати більше.",
+  "inviteTitle": "Під'єднайте телефон дитини",
+  "inviteSteps": "1. Встановіть «Де мої діти: Дитина» на телефон дитини.\n2. Відскануйте QR-код або введіть код.",
+  "inviteExpires": "Код дійсний до {time}",
+  "@inviteExpires": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "newCode": "Новий код",
+  "statusOnline": "онлайн",
+  "statusRecent": "недавно",
+  "statusOffline": "немає зв'язку",
+  "statusPaused": "пауза",
+  "justNow": "щойно",
+  "minutesAgo": "{count} хв тому",
+  "@minutesAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "hoursAgo": "{count} год тому",
+  "@hoursAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "history": "Історія",
+  "call": "Подзвонити",
+  "updateNow": "Оновити зараз",
+  "updateRequested": "Запит надіслано на телефон дитини",
+  "notConnected": "Не під'єднано",
+  "connectPhone": "Під'єднати телефон",
+  "noLocationYet": "Ще немає геолокації",
+  "dataAsOf": "Немає з'єднання. Дані станом на {time}",
+  "@dataAsOf": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "zones": "Зони",
+  "noChildren": "Додайте дитину, щоб бачити її на карті",
+  "accuracy": "точність {meters} м",
+  "@accuracy": {
+    "placeholders": {
+      "meters": {
+        "type": "int"
+      }
+    }
+  },
+  "sosTitle": "{name}: SOS!",
+  "@sosTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "sosAt": "Сигнал о {time}",
+  "@sosAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "sosBattery": "Батарея {level}%",
+  "@sosBattery": {
+    "placeholders": {
+      "level": {
+        "type": "int"
+      }
+    }
+  },
+  "sosAck": "Бачу, вже дію",
+  "sosResolve": "Вирішено",
+  "sosAcknowledgedBy": "{name} підтверджує",
+  "@sosAcknowledgedBy": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "sosCall112": "Викликати 112",
+  "sosCall112Confirm": "Зателефонувати на 112? Це екстрена лінія: дзвоніть лише за реальної небезпеки.",
+  "yesCall": "Так, телефонувати",
+  "no": "Ні",
+  "sosRoute": "Маршрут за останні 30 хв",
+  "sosNoLocation": "Координати ще не отримано, показано останнє відоме місце",
+  "historyTitle": "Історія переміщень",
+  "today": "Сьогодні",
+  "yesterday": "Вчора",
+  "noPoints": "За цей період немає точок",
+  "historyLimited": "На безкоштовному тарифі доступна історія за 24 години",
+  "zonesTitle": "Безпечні зони",
+  "addZone": "Додати зону",
+  "zoneHome": "Дім",
+  "zoneSchool": "Школа",
+  "zoneSport": "Спортзал",
+  "zoneOther": "Інше",
+  "zoneName": "Назва зони",
+  "radius": "Радіус: {meters} м",
+  "@radius": {
+    "placeholders": {
+      "meters": {
+        "type": "int"
+      }
+    }
+  },
+  "tapMapToPlace": "Торкніться карти, щоб поставити центр зони",
+  "notifyEnter": "Сповіщати про вхід",
+  "notifyExit": "Сповіщати про вихід",
+  "noZones": "Додайте дім, школу чи секцію, щоб отримувати сповіщення, коли дитина приходить і йде",
+  "childWelcomeTitle": "Привіт! Тут батьки зможуть бачити, де ти",
+  "consentTitle": "Що бачать батьки",
+  "consentBody": "Після під'єднання батьки бачитимуть, де знаходиться цей телефон, заряд батареї та історію переміщень за останні дні.\n\nНа телефоні завжди видно, що геолокація передається. Ти бачиш, хто саме має доступ, і можеш від'єднатися в налаштуваннях: батьки отримають про це сповіщення.",
+  "consentAccept": "Зрозуміло, погоджуюся",
+  "enterCode": "Код від батьків",
+  "scanQr": "Сканувати QR-код",
+  "connect": "Під'єднатися",
+  "inviteInvalid": "Код неправильний або застарів. Попроси батьків створити новий.",
+  "permissionTitle": "Дозвіл на геолокацію",
+  "permissionBody": "Щоб батьки бачили, де ти, навіть коли застосунок закритий, обери «Дозволяти завжди».",
+  "permissionGrant": "Надати дозвіл",
+  "permissionSettings": "Відкрити налаштування",
+  "permissionWhileInUse": "Зараз геолокація передається лише коли застосунок відкритий. Для роботи у фоні дозволь «Завжди».",
+  "locationServiceOff": "Геолокацію на телефоні вимкнено. Увімкни її в налаштуваннях.",
+  "parentsSee": "Твою геолокацію бачать",
+  "sharingOn": "Геолокація передається",
+  "pendingPoints": "Немає інтернету. Збережено точок: {count}",
+  "@pendingPoints": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sendLocation": "Надіслати, де я",
+  "sent": "Надіслано",
+  "sosHold": "Утримуй 3 секунди",
+  "sosCountdown": "SOS через {seconds}…",
+  "@sosCountdown": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "sosSent": "SOS надіслано. Батьки отримали сигнал.",
+  "sosAckByChild": "{name} бачить твій сигнал",
+  "@sosAckByChild": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "sosCancel": "Скасувати тривогу",
+  "sosSmsFallback": "Немає інтернету. Надіслати SMS батькам?",
+  "sendSms": "Надіслати SMS",
+  "sosSmsText": "SOS! Мені потрібна допомога. Я тут: {link}",
+  "@sosSmsText": {
+    "placeholders": {
+      "link": {
+        "type": "String"
+      }
+    }
+  },
+  "pauseHour": "Призупинити на 1 годину",
+  "pausedUntil": "Передачу призупинено до {time}",
+  "@pausedUntil": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "resume": "Відновити",
+  "leaveFamily": "Від'єднатися від сім'ї",
+  "leaveConfirm": "Батьки отримають сповіщення, а історію переміщень буде видалено. Продовжити?",
+  "leave": "Від'єднатися",
+  "trackingNoticeTitle": "Де мої діти",
+  "trackingNoticeText": "Геолокація передається батькам",
+  "trackingChannel": "Передача геолокації",
+  "settings": "Налаштування",
+  "language": "Мова",
+  "exportData": "Експортувати мої дані",
+  "deleteAccount": "Видалити акаунт",
+  "deleteAccountConfirm": "Буде видалено акаунт, сім'ю, дітей і всю історію переміщень. Це не можна скасувати."
+}

@@ -1,0 +1,4 @@
+.env
+*.secrets
+*.rdb
+.DS_Store

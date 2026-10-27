@@ -1,0 +1,784 @@
+<title>Де мої діти — архитектура MVP</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: sticky table of contents on the left, one reading column; collapses to a single column on phones. */
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --fg: #172033;
+  --muted: #5a6478;
+  --line: #dde2ea;
+  --accent: #1f5fd1;
+  --accent-soft: #e6eefc;
+  --sun: #f2b705;
+  --sun-soft: #fff6d6;
+  --ok: #1d8a5a;
+  --warn: #b26a00;
+  --crit: #c2362f;
+  --code-bg: #eef1f6;
+  --f-display: "Manrope", "Segoe UI", system-ui, sans-serif;
+  --f-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f141d; --surface: #161d29; --fg: #e6eaf2; --muted: #9aa4b6; --line: #29323f;
+    --accent: #7aa7ff; --accent-soft: #1b2a47; --sun: #ffcf3f; --sun-soft: #3a3010;
+    --ok: #4cc58c; --warn: #f0a53a; --crit: #ff6b62; --code-bg: #1c2433; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f141d; --surface: #161d29; --fg: #e6eaf2; --muted: #9aa4b6; --line: #29323f;
+  --accent: #7aa7ff; --accent-soft: #1b2a47; --sun: #ffcf3f; --sun-soft: #3a3010;
+  --ok: #4cc58c; --warn: #f0a53a; --crit: #ff6b62; --code-bg: #1c2433; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: 15.5px; line-height: 1.6; }
+.wrap { max-width: 1240px; margin: 0 auto; padding-block: 32px 80px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 48px; }
+nav.toc { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 20px); align-self: start; max-height: calc(100vh - 40px); overflow-y: auto; font-size: 13.5px; }
+nav.toc .brand { font-family: var(--f-display); font-weight: 800; font-size: 17px; margin-bottom: 14px; display: flex; gap: 8px; align-items: center; }
+nav.toc .flag { width: 18px; height: 12px; border-radius: 2px; background: linear-gradient(var(--accent) 50%, var(--sun) 50%); flex: none; }
+nav.toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; counter-reset: s; }
+nav.toc a { color: var(--muted); text-decoration: none; display: block; padding: 3px 8px; border-radius: 6px; }
+nav.toc a:hover, nav.toc a:focus-visible { background: var(--accent-soft); color: var(--fg); outline: none; }
+main { min-width: 0; }
+header.hero { padding-bottom: 28px; border-bottom: 1px solid var(--line); margin-bottom: 8px; }
+.eyebrow { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; line-height: 1.25; }
+h1 { font-size: clamp(28px, 4vw, 40px); margin: 8px 0 12px; font-weight: 800; }
+h2 { font-size: 24px; margin: 0 0 14px; font-weight: 800; display: flex; gap: 12px; align-items: baseline; }
+h2 .n { font-family: var(--f-mono); font-size: 14px; color: var(--accent); font-weight: 500; }
+h3 { font-size: 17px; margin: 26px 0 8px; font-weight: 700; }
+p, li { max-width: 74ch; }
+.lead { font-size: 17px; color: var(--muted); max-width: 70ch; }
+section { padding-block: 34px; border-bottom: 1px solid var(--line); scroll-margin-top: 16px; }
+a { color: var(--accent); }
+code { font-family: var(--f-mono); font-size: .9em; background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
+pre { font-family: var(--f-mono); font-size: 13px; line-height: 1.5; background: var(--code-bg); padding: 14px 16px; border-radius: 8px; overflow-x: auto; margin: 12px 0; }
+pre code { background: none; padding: 0; }
+pre.mermaid { background: var(--surface); border: 1px solid var(--line); text-align: center; }
+.tbl { overflow-x: auto; margin: 12px 0; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-weight: 600; color: var(--muted); font-size: 12.5px; letter-spacing: .03em; text-transform: uppercase; background: var(--bg); }
+tr:last-child td { border-bottom: none; }
+td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.note { background: var(--sun-soft); border-left: 3px solid var(--sun); padding: 10px 14px; border-radius: 0 8px 8px 0; margin: 14px 0; max-width: 80ch; }
+.decision { background: var(--accent-soft); padding: 12px 16px; border-radius: 8px; margin: 14px 0; max-width: 80ch; }
+.decision b:first-child { font-family: var(--f-display); }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin: 12px 0; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; min-width: 0; }
+.card h4 { margin: 0 0 6px; font-family: var(--f-display); font-size: 15px; }
+.card ul { margin: 0; padding-left: 18px; }
+.pill { display: inline-block; font-size: 12px; padding: 1px 8px; border-radius: 999px; font-weight: 600; }
+.pill.ok { color: var(--ok); background: color-mix(in srgb, var(--ok) 14%, transparent); }
+.pill.warn { color: var(--warn); background: color-mix(in srgb, var(--warn) 14%, transparent); }
+.pill.crit { color: var(--crit); background: color-mix(in srgb, var(--crit) 14%, transparent); }
+.method { font-family: var(--f-mono); font-size: 12px; font-weight: 500; padding: 1px 6px; border-radius: 4px; background: var(--code-bg); }
+.phone { width: 260px; max-width: 100%; border: 2px solid var(--line); border-radius: 26px; padding: 10px; background: var(--surface); }
+.phone .map { height: 200px; border-radius: 16px; background: repeating-linear-gradient(45deg, var(--code-bg) 0 12px, var(--bg) 12px 24px); position: relative; }
+.phone .pin { position: absolute; display: flex; flex-direction: column; align-items: center; font-size: 11px; }
+.phone .ava { width: 30px; height: 30px; border-radius: 50%; border: 3px solid var(--surface); box-shadow: 0 0 0 2px var(--accent); display: grid; place-items: center; font-weight: 700; color: #fff; font-size: 12px; }
+.phone .tag { background: var(--surface); padding: 0 6px; border-radius: 6px; margin-top: 2px; border: 1px solid var(--line); }
+.phone .row { display: flex; align-items: center; gap: 8px; padding: 8px 4px; border-bottom: 1px solid var(--line); font-size: 12.5px; }
+.phone .row:last-child { border: none; }
+.phone .dot { width: 8px; height: 8px; border-radius: 50%; }
+.phone .btns { display: flex; gap: 6px; margin-top: 8px; }
+.phone .btns span { flex: 1; text-align: center; font-size: 11.5px; padding: 6px; border-radius: 8px; background: var(--accent-soft); }
+.phone .btns span.sos { background: color-mix(in srgb, var(--crit) 16%, transparent); color: var(--crit); font-weight: 700; }
+.uxrow { display: flex; gap: 28px; flex-wrap: wrap; align-items: flex-start; }
+.uxrow > div:last-child { flex: 1; min-width: 0; }
+@media (max-width: 860px) {
+  .wrap { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  nav.toc { position: static; max-height: none; border-bottom: 1px solid var(--line); padding-bottom: 16px; }
+  nav.toc ol { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+
+<div class="wrap">
+<nav class="toc" aria-label="Содержание">
+  <div class="brand"><span class="flag" aria-hidden="true"></span>Де мої діти</div>
+  <ol>
+    <li><a href="#competitors">1. Конкуренты</a></li>
+    <li><a href="#mvp">2. Функции MVP</a></li>
+    <li><a href="#ukraine">3. Уникальное для Украины</a></li>
+    <li><a href="#stack">4. Стек</a></li>
+    <li><a href="#arch">5. Архитектура</a></li>
+    <li><a href="#db">6. Схема БД</a></li>
+    <li><a href="#api">7. REST API</a></li>
+    <li><a href="#ws">8. WebSocket</a></li>
+    <li><a href="#gps">9. Фоновый GPS</a></li>
+    <li><a href="#geofence">10. Геозоны</a></li>
+    <li><a href="#auth">11. Auth</a></li>
+    <li><a href="#security">12. Безопасность и право</a></li>
+    <li><a href="#push">13. Push</a></li>
+    <li><a href="#offline">14. Offline</a></li>
+    <li><a href="#sos">SOS</a></li>
+    <li><a href="#ux">UX</a></li>
+    <li><a href="#money">Монетизация</a></li>
+    <li><a href="#mobile">15, 19. Mobile-проект</a></li>
+    <li><a href="#backend">18. Backend-проект</a></li>
+    <li><a href="#roadmap">16–17. Roadmap</a></li>
+    <li><a href="#code">20. Код MVP</a></li>
+  </ol>
+</nav>
+
+<main>
+<header class="hero">
+  <div class="eyebrow">Технический дизайн · версия 1 · 25.10.2026</div>
+  <h1>«Де мої діти»: семейный локатор для Украины</h1>
+  <p class="lead">Документ отвечает на 20 пунктов задания: рынок, состав MVP, стек, архитектура, схема данных, API, алгоритм фоновой геолокации, безопасность и право, монетизация и план работ. Решения приняты так, чтобы MVP вырос в production без переписывания.</p>
+  <p class="note"><b>Принцип продукта.</b> Детское приложение работает ненавязчиво (не мешает, не тратит батарею, не требует внимания), но не скрыто: ребёнок видит, кто видит его геопозицию, ОС показывает индикатор геолокации, а в онбординге есть понятный экран согласия. Это требование и закона, и магазинов приложений, и основа доверия к бренду.</p>
+</header>
+
+<section id="competitors">
+<h2><span class="n">01</span>Анализ конкурентов (Украина и Россия)</h2>
+<p>Цифры по ценам ориентировочные, на основе публичных страниц магазинов; перед запуском их стоит перепроверить.</p>
+<div class="tbl"><table>
+<thead><tr><th>Продукт</th><th>Происхождение</th><th>Сильные стороны</th><th>Слабые стороны для Украины</th></tr></thead>
+<tbody>
+<tr><td><b>Findmykids / «Где мои дети» + Pingo</b></td><td>Россия (юрлица вынесены за рубеж)</td><td>Лидер категории в СНГ, два приложения (родитель/ребёнок), звук вокруг, поддержка GPS-часов, громкий сигнал</td><td>Российское происхождение подрывает доверие, данные о перемещениях детей в военное время чувствительны. Часть функций (прослушка окружения) этически спорна. Дорого.</td></tr>
+<tr><td><b>Kaspersky Safe Kids</b></td><td>Россия</td><td>Родительский контроль + геолокация + геозоны</td><td>Продукты Касперского под санкциями в Украине (указы СНБО с 2017), в США запрещены с 2024. Для нас это свободная ниша.</td></tr>
+<tr><td><b>KidSecurity, «Кидз Контрол» и подобные</b></td><td>Россия</td><td>Дешёвые, совместимы с GPS-часами</td><td>Те же проблемы доверия; слабый UX.</td></tr>
+<tr><td><b>Life360</b></td><td>США</td><td>Лучший в мире UX семейного круга, детекция ДТП, мощный бэкенд</td><td>Нет украинского языка, цены в долларах, исторический скандал с продажей данных о местоположении брокерам (2021), функции под США.</td></tr>
+<tr><td><b>Google Family Link / Find My Device</b></td><td>США</td><td>Бесплатно, встроено в Android</td><td>Геолокация как побочная функция, нет геозон с уведомлениями, нет SOS, ограничения по возрасту (до 13 лет), не работает с iPhone ребёнка.</td></tr>
+<tr><td><b>Apple «Локатор» / Семейный доступ</b></td><td>США</td><td>Бесплатно, надёжный фон на iOS</td><td>Только экосистема Apple; большинство детей в Украине на Android.</td></tr>
+<tr><td><b>GeoZilla</b></td><td>Основатели из Украины</td><td>Семейный локатор, трекеры</td><td>Ориентирован на США/ЕС, интерфейс не адаптирован под украинские реалии.</td></tr>
+<tr><td><b>Детские GPS-часы (Elari, Wonlex и др.)</b></td><td>Китай/Россия</td><td>Не нужен смартфон, SIM-карта</td><td>Слабая безопасность прошивок и китайских облаков, плохой GPS в помещениях. Для нас это интеграция в будущем, не конкурент MVP.</td></tr>
+</tbody></table></div>
+<div class="decision"><b>Вывод.</b> Ниша «доверенный, украинский, безопасный семейный локатор» свободна. Российские лидеры теряют аудиторию по причинам доверия и санкций, а западные не локализованы. Позиционирование: <i>безопасность и приватность прежде всего</i>, украинская команда, данные хранятся в ЕС, нет российских SDK, SOS бесплатен для всех.</div>
+</section>
+
+<section id="mvp">
+<h2><span class="n">02</span>Ключевые функции MVP</h2>
+<div class="grid2">
+<div class="card"><h4>Родитель — Must have (MVP 1.0)</h4><ul>
+<li>Регистрация (email + пароль), вход, выход, удаление аккаунта</li>
+<li>Создание семьи, второй родитель по приглашению</li>
+<li>Добавление нескольких детей (имя, аватар, год рождения)</li>
+<li>Приглашение ребёнка по QR или 8-значному коду</li>
+<li>Карта с детьми: аватар, имя, время обновления</li>
+<li>Статусы: онлайн / недавно / нет связи, батарея</li>
+<li>История и маршрут за выбранный период</li>
+<li>Геозоны (Дом, Школа, Спортзал, Другое), вход/выход</li>
+<li>Push, SOS-тревога, звонок ребёнку</li>
+<li>Устройства: список, отзыв; экспорт данных</li>
+</ul></div>
+<div class="card"><h4>Ребёнок — Must have</h4><ul>
+<li>Подключение по QR/коду (без пароля)</li>
+<li>Экран согласия и объяснение, что видят родители</li>
+<li>Фоновая геолокация с адаптивной частотой</li>
+<li>Offline-очередь и досылка</li>
+<li>Статус соединения, список подключённых родителей</li>
+<li>SOS с защитой от случайного нажатия</li>
+<li>«Отправить моё местоположение» сейчас</li>
+<li>Пауза передачи (по возрастным правилам) и выход из семьи</li>
+</ul></div>
+<div class="card"><h4>Отложено в 1.1–2.0</h4><ul>
+<li>Вход по телефону + OTP (TurboSMS / AlphaSMS)</li>
+<li>Режим «Повітряна тривога» и «Я в укритті»</li>
+<li>Полигональные геозоны, расписания зон</li>
+<li>Приватный режим с E2E-шифрованием</li>
+<li>GPS-часы, Apple Watch / Wear OS</li>
+<li>Детекция ДТП, отчёты по неделе</li>
+</ul></div>
+</div>
+<p>Сознательно не делаем: прослушку окружения, чтение переписок, скрытый режим без иконки. Это отрезает спорную аудиторию, но защищает от блокировки в сторах и от юридических рисков.</p>
+</section>
+
+<section id="ukraine">
+<h2><span class="n">03</span>Уникальные функции для Украины</h2>
+<div class="tbl"><table>
+<thead><tr><th>Функция</th><th>Зачем</th><th>Как</th><th>Этап</th></tr></thead>
+<tbody>
+<tr><td><b>Режим воздушной тревоги</b></td><td>Главный вопрос родителя во время тревоги: «где ребёнок и всё ли в порядке»</td><td>Интеграция с API alerts.in.ua (партнёрский ключ) по области/громаде ребёнка. При тревоге родитель получает статус ребёнка, а ребёнку приходит мягкий запрос «Я в укритті / Я в безпеці» в один тап.</td><td>1.1</td></tr>
+<tr><td><b>Кнопка «Я в безпеці»</b></td><td>Быстрый check-in без звонка, когда связь перегружена</td><td>Маленький payload, отправка через REST, при отсутствии интернета — SMS-шаблон</td><td>1.1</td></tr>
+<tr><td><b>SMS-фолбэк SOS</b></td><td>Мобильный интернет пропадает при массированных атаках и блэкаутах, а GSM часто остаётся</td><td>Если SOS не ушёл за 15 секунд, открываем SMS-композер с текстом и ссылкой на координаты. Отправку подтверждает ребёнок: тихая отправка SMS запрещена политиками Google Play.</td><td>MVP</td></tr>
+<tr><td><b>Режим блэкаута</b></td><td>Длительные отключения света, ребёнок не может зарядить телефон</td><td>При заряде &lt;20% без зарядки частота снижается в 3–4 раза, при &lt;10% остаётся только heartbeat и SOS. Родитель видит пометку «режим економії».</td><td>MVP</td></tr>
+<tr><td><b>Offline-карты города</b></td><td>Карта у родителя открывается без интернета</td><td>Кэш тайлов по районам дом/школа (flutter_map + кэш)</td><td>1.1</td></tr>
+<tr><td><b>Укрытия рядом</b></td><td>Ребёнок знает, куда бежать</td><td>Открытые данные городов об укрытиях (Киев, Львов, Днепр и др.), слой на карте</td><td>2.0</td></tr>
+<tr><td><b>Семья через границу</b></td><td>Миллионы детей живут в ЕС, а родитель в Украине (и наоборот)</td><td>Роуминг-режим (экономия трафика), часовые пояса в истории, соответствие GDPR с первого дня</td><td>MVP</td></tr>
+<tr><td><b>Украинский по умолчанию</b></td><td>Рынок и закон о языке (обслуживание на украинском)</td><td>uk — основной, en и ru опционально. Даты <code>25.10.2026</code>, время <code>21:19</code> (24h), телефон <code>+380 67 123 45 67</code>, неделя с понедельника.</td><td>MVP</td></tr>
+<tr><td><b>Экстренные службы</b></td><td>Быстрый вызов помощи</td><td>Кнопки 112/102/103/101 только через системный набор номера с подтверждением; см. раздел SOS</td><td>MVP</td></tr>
+</tbody></table></div>
+</section>
+
+<section id="stack">
+<h2><span class="n">04</span>Технологический стек</h2>
+<h3>Mobile: Flutter + нативные модули там, где нужно</h3>
+<div class="tbl"><table>
+<thead><tr><th>Критерий</th><th>Flutter</th><th>React Native</th><th>Нативные Swift/Kotlin</th></tr></thead>
+<tbody>
+<tr><td>Фоновая геолокация</td><td>Плагины geolocator / background_geolocation, нативный код через platform channels</td><td>Аналогично (react-native-background-geolocation)</td><td>Лучший контроль, но это лишь тонкий слой кода</td></tr>
+<tr><td>UI-консистентность</td><td>Свой рендер, одинаково на всех Android (важно при зоопарке Xiaomi/Samsung/Realme)</td><td>Нативные виджеты, больше различий</td><td>Два UI</td></tr>
+<tr><td>Стоимость команды</td><td>Одна кодовая база</td><td>Одна кодовая база</td><td>×1,8–2</td></tr>
+<tr><td>Производительность карты</td><td>Хорошая (flutter_map, google_maps_flutter)</td><td>Хорошая</td><td>Лучшая</td></tr>
+</tbody></table></div>
+<div class="decision"><b>Решение: Flutter.</b> Фоновая геолокация — это примерно 5% кода, и она изолирована за интерфейсом <code>LocationEngine</code>. В MVP он реализован на <code>geolocator</code> (foreground service на Android, background location на iOS) с собственным адаптивным алгоритмом на Dart. На этапе 1.1 тот же интерфейс получает нативную реализацию на Kotlin (FusedLocationProvider + Activity Recognition + Geofencing API) и Swift (CLLocationManager + significant-change + region monitoring). UI и бизнес-логику переписывать не придётся.</div>
+<p>Один код, две сборки (flavors): <b>«Де мої діти»</b> для родителей и <b>«Де мої діти: Дитина»</b> для ребёнка. Так приложение родителя не запрашивает фоновую геолокацию, а это упрощает ревью в Google Play и App Store. Детское приложение маленькое и легко объясняет свои разрешения.</p>
+
+<h3>Карты: провайдер за абстракцией</h3>
+<div class="tbl"><table>
+<thead><tr><th></th><th>Google Maps SDK</th><th>Mapbox</th><th>OSM + свой tile-провайдер</th></tr></thead>
+<tbody>
+<tr><td>Цена мобильного SDK</td><td>Динамические карты в нативных SDK бесплатны; геокодинг и Places платные</td><td>Бесплатно до 25 тыс. MAU, дальше оплата за MAU</td><td>Только хостинг тайлов (MapTiler / Stadia / свой сервер OpenMapTiles)</td></tr>
+<tr><td>Качество данных по Украине</td><td>Отличное, есть POI</td><td>На базе OSM, хорошее</td><td>OSM в Украине очень подробный, быстро обновляет переименованные улицы</td></tr>
+<tr><td>Зависимости</td><td>Google Play Services</td><td>Проприетарный SDK</td><td>Нет</td></tr>
+<tr><td>Offline-кэш</td><td>Ограничен</td><td>Есть (платно на масштабе)</td><td>Полный контроль</td></tr>
+</tbody></table></div>
+<div class="decision"><b>Решение.</b> Интерфейс <code>MapView</code> в Flutter (маркеры, полилиния маршрута, круги геозон, камера). MVP: <code>flutter_map</code> + векторные/растровые тайлы MapTiler (URL и ключ из конфигурации; публичные тайлы tile.openstreetmap.org в коммерческом продукте использовать нельзя). Адаптер Google Maps можно добавить за 2–3 дня, если продукт решит, что POI Google важнее. Российские сервисы (Яндекс.Карты, AppMetrica) исключены: санкции и доверие.</div>
+
+<h3>Backend</h3>
+<div class="tbl"><table>
+<thead><tr><th>Слой</th><th>Выбор</th><th>Почему</th></tr></thead>
+<tbody>
+<tr><td>Runtime / фреймворк</td><td>Node.js 22 + NestJS 11 (TypeScript strict)</td><td>Модульность, DI, guards, готовые WebSocket-шлюзы, большой рынок разработчиков в Украине</td></tr>
+<tr><td>БД</td><td>PostgreSQL 16, Kysely (типизированный SQL-builder), SQL-миграции</td><td>Полный контроль над SQL: партиционирование истории, частичные индексы, без тяжёлого ORM-движка</td></tr>
+<tr><td>Кэш / pub-sub / очереди</td><td>Redis 7: последнее местоположение, presence, rate limit, Socket.IO adapter, BullMQ</td><td>Один компонент на несколько задач</td></tr>
+<tr><td>Realtime</td><td>Socket.IO (только websocket-транспорт) + Redis adapter</td><td>Комнаты, ack, автопереподключение, горизонтальное масштабирование без sticky sessions</td></tr>
+<tr><td>Push</td><td>FCM HTTP v1 (Android + iOS через APNs-ключ в Firebase)</td><td>Один канал, приоритеты, critical alerts на iOS</td></tr>
+<tr><td>Наблюдаемость</td><td>pino (JSON-логи), OpenTelemetry, Prometheus/Grafana, Sentry</td><td>Стандарт</td></tr>
+<tr><td>Инфраструктура</td><td>Docker, Kubernetes (EKS/GKE или Hetzner + k3s), managed PostgreSQL, регион ЕС (Франкфурт/Варшава)</td><td>GDPR, задержка до Украины 20–35 мс, вне юрисдикции РФ</td></tr>
+</tbody></table></div>
+</section>
+
+<section id="arch">
+<h2><span class="n">05</span>Архитектура приложения</h2>
+<pre class="mermaid">
+flowchart LR
+  subgraph Devices
+    CA[Детское приложение<br/>LocationEngine + offline-очередь]
+    PA[Приложение родителя<br/>карта, история, SOS]
+  end
+  CA -- HTTPS /v1/locations/batch --> LB
+  CA -- WSS presence --> LB
+  PA -- HTTPS REST --> LB
+  PA -- WSS события --> LB
+  LB[Load balancer / TLS 1.3] --> API1[API pod]
+  LB --> API2[API pod ×N]
+  API1 & API2 --> PG[(PostgreSQL<br/>партиции locations)]
+  API1 & API2 --> R[(Redis<br/>last location, presence,<br/>rate limit, pub/sub)]
+  API1 & API2 -- BullMQ --> W[Worker: push, retention,<br/>экспорт, удаление]
+  W --> FCM[FCM / APNs]
+  W --> PG
+  FCM --> PA
+</pre>
+<h3>Поток местоположения</h3>
+<ol>
+<li>Ребёнок: <code>LocationEngine</code> выдаёт отфильтрованные точки, они пишутся в локальную SQLite-очередь.</li>
+<li><code>SyncService</code> пачками (до 100 точек) отправляет их в <code>POST /v1/locations/batch</code> с идемпотентными <code>clientId</code>.</li>
+<li>API валидирует, шифрует координаты (AES-256-GCM), пишет в партицию <code>locations</code> одним INSERT и обновляет last location в Redis, если точка новее.</li>
+<li>Геозоны оцениваются синхронно для самой свежей точки (круги, гистерезис) и при переходе создают событие и push.</li>
+<li>Событие <code>location.updated</code> публикуется в комнату семьи. Через Redis adapter его получают все pod-ы, а затем родители, подключённые по WebSocket.</li>
+</ol>
+<h3>Масштабирование до сотен тысяч пользователей</h3>
+<p>Оценка: 300 тыс. активных детских устройств. Средний интервал отправки с учётом стационарности около 4 минут, это ~1 250 точек/с, но они приходят пачками, поэтому выходит ~150–250 запросов/с. Это нагрузка для 3–4 pod-ов API и одного primary PostgreSQL с батч-вставками. Узкие места и их решения:</p>
+<ul>
+<li><b>Запись истории:</b> месячные партиции, только BRIN/B-tree <code>(child_id, recorded_at)</code>, удаление старых данных через <code>DROP PARTITION</code> вместо DELETE. Следующий шаг — Redis Streams/Kafka как буфер ingest и отдельный сервис записи.</li>
+<li><b>WebSocket:</b> ~50 тыс. соединений на pod (Node + uWS при необходимости). Redis adapter, комнаты по семье.</li>
+<li><b>Чтение:</b> карта читает только Redis (last location), историю читают редко и по индексу.</li>
+<li><b>Шардирование</b> по <code>family_id</code> понадобится только после ~5 млн устройств.</li>
+</ul>
+</section>
+
+<section id="db">
+<h2><span class="n">06</span>Database schema</h2>
+<p>Полная миграция лежит в <code>backend/src/database/migrations/</code>. Ключевые решения: UUID v7 для идентификаторов (сортируемые), координаты в истории шифруются на уровне приложения, история партиционирована по месяцам, все связи с ребёнком удаляются каскадно.</p>
+<pre class="mermaid">
+erDiagram
+  users ||--o{ family_members : ""
+  families ||--o{ family_members : ""
+  users ||--o{ devices : ""
+  devices ||--o{ refresh_tokens : ""
+  families ||--o{ invites : ""
+  families ||--o{ geofences : ""
+  users ||--o{ locations : "child"
+  geofences ||--o{ geofence_states : ""
+  geofences ||--o{ geofence_events : ""
+  families ||--o{ sos_events : ""
+  users ||--o{ consents : ""
+  users ||--o{ audit_log : "actor"
+</pre>
+<pre><code>users(id uuid pk, role 'parent'|'child', email citext unique null, password_hash text null,
+      display_name text, avatar_url text, birth_year smallint, phone text, locale 'uk'|'ru'|'en',
+      sharing_paused_until timestamptz, created_at, deleted_at)
+families(id, name, owner_id → users, plan 'free'|'premium'|'family', history_days smallint, created_at)
+family_members(family_id, user_id, role 'owner'|'parent'|'child', joined_at, pk(family_id,user_id))
+devices(id, user_id, platform 'android'|'ios', model, os_version, app_version, push_token,
+        battery_level smallint, is_charging bool, last_seen_at, revoked_at, created_at)
+refresh_tokens(id, device_id, user_id, token_hash bytea unique, chain_id uuid, expires_at,
+               revoked_at, replaced_by uuid, created_at)
+invites(id, family_id, child_id → users, code_hash bytea unique, created_by, expires_at,
+        used_at, used_by_device uuid, failed_attempts smallint)
+locations(id bigint identity, child_id, device_id, client_id uuid, recorded_at, received_at,
+          payload bytea /* AES-GCM(lat,lng,acc,speed,heading,alt) */, key_version smallint,
+          battery smallint, source 'gps'|'network'|'fused'|'manual'|'sos', motion text,
+          unique(child_id, client_id, recorded_at)) PARTITION BY RANGE (recorded_at)
+geofences(id, family_id, name, kind 'home'|'school'|'sport'|'other', lat, lng, radius_m,
+          notify_enter, notify_exit, created_by, created_at, deleted_at)
+geofence_states(geofence_id, child_id, inside bool, changed_at, pk(geofence_id, child_id))
+geofence_events(id, geofence_id, child_id, kind 'enter'|'exit', occurred_at)
+sos_events(id, family_id, child_id, device_id, status 'active'|'acknowledged'|'resolved'|'cancelled',
+           payload bytea /* зашифрованные координаты */, battery, created_at, acknowledged_by,
+           acknowledged_at, resolved_at)
+consents(id, user_id, kind 'location_tracking'|'privacy_policy'|'parental', version, granted_by,
+         granted_at, revoked_at)
+audit_log(id bigint, actor_user_id, actor_device_id, action, target_type, target_id,
+          ip_hash bytea, meta jsonb, created_at)</code></pre>
+<h3>Хранение и минимизация</h3>
+<div class="tbl"><table>
+<thead><tr><th>Данные</th><th>Где</th><th>Срок</th></tr></thead>
+<tbody>
+<tr><td>Последнее местоположение</td><td>Redis (зашифровано тем же ключом), TTL 30 дней</td><td class="num">30 дн.</td></tr>
+<tr><td>История (Free)</td><td>PostgreSQL</td><td class="num">24 ч</td></tr>
+<tr><td>История (Premium)</td><td>PostgreSQL</td><td class="num">30 дн.</td></tr>
+<tr><td>Физическое удаление</td><td>DROP партиции</td><td class="num">≤ 35 дн.</td></tr>
+<tr><td>SOS-события</td><td>PostgreSQL</td><td class="num">90 дн.</td></tr>
+<tr><td>Audit log</td><td>PostgreSQL, без координат, IP захэширован</td><td class="num">1 год</td></tr>
+<tr><td>Удалённый аккаунт</td><td>Каскадное удаление сразу, бэкапы ротируются</td><td class="num">≤ 30 дн. в бэкапах</td></tr>
+</tbody></table></div>
+<p>Free-история обрезается фильтром на чтении (<code>recorded_at &gt; now() - history_days</code>) и ночной джобой, так что апгрейд не «воскрешает» старые данные, которых уже не должно быть.</p>
+</section>
+
+<section id="api">
+<h2><span class="n">07</span>REST API (v1)</h2>
+<p>JSON, <code>Authorization: Bearer &lt;access JWT&gt;</code>, ошибки в формате <code>{"error":{"code":"INVITE_EXPIRED","message":"…"}}</code>, пагинация курсором. Роль в колонке — кто вправе вызывать.</p>
+<div class="tbl"><table>
+<thead><tr><th>Метод</th><th>Путь</th><th>Роль</th><th>Назначение</th></tr></thead>
+<tbody>
+<tr><td><span class="method">POST</span></td><td><code>/v1/auth/register</code></td><td>—</td><td>Регистрация родителя + первое устройство, возвращает пару токенов</td></tr>
+<tr><td><span class="method">POST</span></td><td><code>/v1/auth/login</code></td><td>—</td><td>Вход, привязка устройства</td></tr>
+<tr><td><span class="method">POST</span></td><td><code>/v1/auth/refresh</code></td><td>—</td><td>Ротация refresh-токена, детект повторного использования</td></tr>
+<tr><td><span class="method">POST</span></td><td><code>/v1/auth/logout</code></td><td>любой</td><td>Отзыв текущего устройства</td></tr>
+<tr><td><span class="method">POST</span></td><td><code>/v1/invites/redeem</code></td><td>—</td><td>Ребёнок вводит код/QR, создаётся устройство ребёнка, выдаются токены</td></tr>
+<tr><td><span class="method">GET</span></td><td><code>/v1/me</code></td><td>любой</td><td>Профиль, семьи, роль</td></tr>
+<tr><td><span class="method">PATCH</span></td><td><code>/v1/me</code></td><td>любой</td><td>Имя, язык</td></tr>
+<tr><td><span class="method">GET</span></td><td><code>/v1/me/export</code></td><td>родитель</td><td>Экспорт всех данных семьи (JSON, GDPR ст. 20)</td></tr>
+<tr><td><span class="method">DELETE</span></td><td><code>/v1/me</code></td><td>родитель</td><td>Удаление аккаунта; для владельца — семья, дети и вся история</td></tr>
+<tr><td><span class="method">POST</span></td><td><code>/v1/families</code></td><td>родитель</td><td>Создать семью</td></tr>
+<tr><td><span class="method">GET</span></td><td><code>/v1/families/:id</code></td><td>член семьи</td><td>Семья, участники, статусы детей</td></tr>
+<tr><td><span class="method">POST</span></td><td><code>/v1/families/:id/children</code></td><td>родитель</td><td>Создать профиль ребёнка (с учётом лимита тарифа)</td></tr>
+<tr><td><span class="method">PATCH / DELETE</span></td><td><code>/v1/families/:id/children/:childId</code></td><td>родитель</td><td>Изменить / удалить ребёнка со всей историей</td></tr>
+<tr><td><span class="method">POST</span></td><td><code>/v1/families/:id/children/:childId/invites</code></td><td>родитель</td><td>Код приглашения + payload для QR, TTL 24 ч</td></tr>
+<tr><td><span class="method">POST</span></td><td><code>/v1/families/:id/parent-invites</code></td><td>владелец</td><td>Пригласить второго родителя</td></tr>
+<tr><td><span class="method">POST</span></td><td><code>/v1/parent-invites/accept</code></td><td>родитель</td><td>Принять приглашение в семью</td></tr>
+<tr><td><span class="method">POST</span></td><td><code>/v1/locations/batch</code></td><td>ребёнок</td><td>Пачка до 100 точек + батарея, идемпотентно</td></tr>
+<tr><td><span class="method">GET</span></td><td><code>/v1/families/:id/locations/latest</code></td><td>родитель</td><td>Последние точки и статусы всех детей</td></tr>
+<tr><td><span class="method">GET</span></td><td><code>/v1/children/:childId/history?from&amp;to</code></td><td>родитель</td><td>Маршрут за период (с прореживанием Douglas–Peucker)</td></tr>
+<tr><td><span class="method">POST</span></td><td><code>/v1/children/:childId/locate</code></td><td>родитель</td><td>Запросить свежую точку (WS + push ребёнку)</td></tr>
+<tr><td><span class="method">GET / POST</span></td><td><code>/v1/families/:id/geofences</code></td><td>родитель</td><td>Список / создание геозоны</td></tr>
+<tr><td><span class="method">PATCH / DELETE</span></td><td><code>/v1/families/:id/geofences/:gid</code></td><td>родитель</td><td>Изменение / удаление</td></tr>
+<tr><td><span class="method">GET</span></td><td><code>/v1/families/:id/geofence-events</code></td><td>родитель</td><td>Лента входов и выходов</td></tr>
+<tr><td><span class="method">POST</span></td><td><code>/v1/sos</code></td><td>ребёнок</td><td>Поднять SOS (координаты, батарея), идемпотентно</td></tr>
+<tr><td><span class="method">POST</span></td><td><code>/v1/sos/:id/cancel</code></td><td>ребёнок</td><td>Отмена ложной тревоги</td></tr>
+<tr><td><span class="method">POST</span></td><td><code>/v1/sos/:id/ack</code>, <code>/resolve</code></td><td>родитель</td><td>«Бачу», «Вирішено»</td></tr>
+<tr><td><span class="method">GET</span></td><td><code>/v1/families/:id/sos?status=active</code></td><td>родитель</td><td>Активные тревоги</td></tr>
+<tr><td><span class="method">GET</span></td><td><code>/v1/child/me</code></td><td>ребёнок</td><td>Кто меня видит (родители), правила паузы</td></tr>
+<tr><td><span class="method">POST</span></td><td><code>/v1/child/sharing/pause</code>, <code>/resume</code></td><td>ребёнок</td><td>Пауза передачи; родители уведомляются</td></tr>
+<tr><td><span class="method">POST</span></td><td><code>/v1/child/leave</code></td><td>ребёнок</td><td>Отключиться от семьи; родители уведомляются</td></tr>
+<tr><td><span class="method">GET / DELETE</span></td><td><code>/v1/devices</code>, <code>/v1/devices/:id</code></td><td>родитель</td><td>Устройства семьи, отзыв (в т.ч. детских)</td></tr>
+<tr><td><span class="method">PUT</span></td><td><code>/v1/devices/current</code></td><td>любой</td><td>Push-токен, версия приложения, батарея</td></tr>
+<tr><td><span class="method">GET</span></td><td><code>/health/live</code>, <code>/health/ready</code></td><td>—</td><td>Проверки для Kubernetes</td></tr>
+</tbody></table></div>
+</section>
+
+<section id="ws">
+<h2><span class="n">08</span>WebSocket-события</h2>
+<p>Socket.IO namespace <code>/rt</code>, только <code>websocket</code>-транспорт. Access JWT передаётся в <code>auth.token</code> при handshake. При истечении токена сервер шлёт <code>auth.expired</code> и рвёт соединение, клиент обновляет токен и переподключается. Комнаты: <code>family:{id}:parents</code>, <code>child:{id}</code>, <code>device:{id}</code>. В комнату семьи можно попасть только по членству, проверенному на сервере; клиент не может подписаться сам.</p>
+<div class="tbl"><table>
+<thead><tr><th>Событие</th><th>Направление</th><th>Payload</th></tr></thead>
+<tbody>
+<tr><td><code>location.updated</code></td><td>сервер → родители</td><td><code>{childId, lat, lng, accuracy, recordedAt, battery, motion, source}</code></td></tr>
+<tr><td><code>child.presence</code></td><td>сервер → родители</td><td><code>{childId, status: online|recent|offline, lastSeenAt}</code></td></tr>
+<tr><td><code>geofence.transition</code></td><td>сервер → родители</td><td><code>{childId, geofenceId, name, kind: enter|exit, at}</code></td></tr>
+<tr><td><code>sos.raised</code> / <code>sos.updated</code></td><td>сервер → родители, ребёнок</td><td><code>{sosId, childId, status, lat, lng, battery, at, ackBy}</code></td></tr>
+<tr><td><code>sharing.changed</code></td><td>сервер → родители</td><td><code>{childId, paused, until}</code></td></tr>
+<tr><td><code>location.request</code></td><td>сервер → ребёнок</td><td><code>{requestId, reason: parent|sos}</code></td></tr>
+<tr><td><code>device.revoked</code></td><td>сервер → устройство</td><td><code>{}</code>, затем disconnect</td></tr>
+<tr><td><code>presence.ping</code></td><td>ребёнок → сервер</td><td><code>{battery, charging}</code> раз в 60 с при активном соединении; ack</td></tr>
+<tr><td><code>auth.expired</code></td><td>сервер → клиент</td><td>—</td></tr>
+</tbody></table></div>
+<p>Координаты никогда не передаются ребёнку о других членах семьи, и детям не шлются события о других детях.</p>
+</section>
+
+<section id="gps">
+<h2><span class="n">09</span>Алгоритм фоновой геолокации</h2>
+<p>Цель: точность маршрута, когда ребёнок движется, почти нулевой расход, когда он стоит, и никаких потерь при обрыве связи. Координаты не отправляются каждую секунду. Устройство работает как конечный автомат, а частота зависит от состояния движения и батареи.</p>
+<pre class="mermaid">
+stateDiagram-v2
+  [*] --> Stationary
+  Stationary --> Moving: выход из стоп-зоны 120 м / activity != still / скорость > 1 м/с
+  Moving --> Stationary: все точки в радиусе 40 м в течение 3 мин
+  Moving --> Vehicle: медиана скорости > 7 м/с (25 км/ч)
+  Vehicle --> Moving: медиана скорости < 4 м/с 60 с
+  Stationary --> Burst: SOS или запрос родителя
+  Moving --> Burst: SOS или запрос родителя
+  Burst --> Moving: через 15 мин или отмена SOS
+</pre>
+<h3>Параметры по состояниям</h3>
+<div class="tbl"><table>
+<thead><tr><th>Состояние</th><th>Точность запроса</th><th>distanceFilter</th><th>Интервал</th><th>Отправка на сервер</th></tr></thead>
+<tbody>
+<tr><td>Stationary</td><td>низкая (Wi-Fi/сота), GPS выключен</td><td>—</td><td>heartbeat 15 мин</td><td>heartbeat + батарея</td></tr>
+<tr><td>Moving (пешком)</td><td>balanced → high</td><td class="num">25 м</td><td class="num">30 с</td><td>каждые 60 с или 10 точек</td></tr>
+<tr><td>Vehicle</td><td>high</td><td class="num">100 м</td><td class="num">20 с</td><td>каждые 60 с</td></tr>
+<tr><td>Burst (SOS/запрос)</td><td>best</td><td class="num">0 м</td><td class="num">5–10 с</td><td>немедленно</td></tr>
+</tbody></table></div>
+<h3>Модификаторы батареи</h3>
+<ul>
+<li>Зарядка: интервалы ×0,5 (можно чаще).</li>
+<li>Заряд &lt; 30%: интервалы ×2, точность не выше balanced.</li>
+<li>Заряд &lt; 15% («режим блэкаута»): Moving ведёт себя как Stationary с heartbeat 10 мин. SOS работает всегда.</li>
+<li>Android Power Saver / iOS Low Power Mode: как &lt; 30%.</li>
+</ul>
+<h3>Фильтрация шума</h3>
+<ol>
+<li>Отбрасываем точки с <code>accuracy &gt; 150 м</code>. Если других точек нет больше 10 минут, принимаем лучшую с флагом <code>coarse</code>: родителю важнее «примерно здесь», чем пустота.</li>
+<li>Отбрасываем «телепорты»: скорость относительно последней принятой точки &gt; 70 м/с (252 км/ч) при плохой точности.</li>
+<li>Отбрасываем точки старше последней принятой (часть ОС отдаёт кэш).</li>
+<li>Сглаживание: простой фильтр Калмана по широте и долготе, дисперсия измерения равна <code>accuracy²</code>, шум процесса зависит от скорости.</li>
+<li>В Stationary новая точка пишется, только если отличается от якоря больше чем на <code>max(accuracy, 30 м)</code>.</li>
+<li>На сервере история прореживается алгоритмом Douglas–Peucker (ε = 10 м) при отдаче маршрута.</li>
+</ol>
+<h3>Определение движения</h3>
+<p>Комбинация трёх сигналов: Activity Recognition (Android) и CMMotionActivity (iOS) как основной источник с минимальным расходом; медиана скорости по последним 5 точкам; выход из «стоп-зоны». В MVP на Dart используются скорость и стоп-зона, распознавание активности подключается вместе с нативным модулем 1.1.</p>
+<h3>Android</h3>
+<ul>
+<li>Foreground service с типом <code>location</code> (обязателен с Android 14) и постоянным уведомлением «Де мої діти: геолокація передається батькам». Уведомление закрепляется в тихом канале с низкой важностью: ненавязчиво, но честно.</li>
+<li>Разрешения запрашиваются по шагам: <code>ACCESS_FINE_LOCATION</code>, затем отдельным экраном <code>ACCESS_BACKGROUND_LOCATION</code> («Дозволяти завжди»), <code>POST_NOTIFICATIONS</code>, <code>ACTIVITY_RECOGNITION</code>. Для Play Console нужна декларация фоновой геолокации и видео.</li>
+<li>Doze и App Standby: в Stationary используем Geofencing API (стоп-зона 120 м) — выход из зоны будит приложение и разрешает старт FGS из фона (это исключение из ограничений Android 12+). WorkManager раз в 15 минут работает как сторож, BOOT_COMPLETED перезапускает сервис.</li>
+<li>Агрессивные прошивки (Xiaomi/MIUI, Samsung, Huawei, Realme, Oppo — массовые в Украине): экран-гайд «Як не дати телефону вимкнути застосунок» по производителю (по данным dontkillmyapp.com) и запрос исключения из оптимизации батареи по явному согласию. Соответствие этого запроса политике Google Play нужно подтвердить на ревью.</li>
+</ul>
+<h3>iOS</h3>
+<ul>
+<li>Авторизация в два шага: When In Use, затем Always (iOS показывает своё предложение позже). <code>UIBackgroundModes: location</code>, <code>allowsBackgroundLocationUpdates = true</code>, <code>showsBackgroundLocationIndicator = true</code> — синий индикатор честно показывает ребёнку, что геолокация используется.</li>
+<li>В движении работает <code>CLLocationUpdate.liveUpdates</code> (iOS 17+) или стандартные обновления с <code>activityType = .otherNavigation</code> и <code>pausesLocationUpdatesAutomatically</code>. В Stationary — <code>stopUpdatingLocation</code> плюс significant location change (~500 м) и region monitoring вокруг стоп-точки: оба механизма перезапускают убитое приложение.</li>
+<li>Лимит 20 регионов на приложение: мониторим стоп-зону и до 19 ближайших геозон.</li>
+<li>Если пользователь выключил «Точное местоположение», показываем объяснение и запрашиваем временную точность только для SOS.</li>
+<li>Если пользователь смахнул приложение, iOS не даёт обычных обновлений, их возобновит только significant change. Ребёнку честно показывается подсказка не закрывать приложение, родителю — статус «немає зв'язку».</li>
+</ul>
+<h3>Offline-очередь</h3>
+<ul>
+<li>SQLite (sqflite): таблица <code>pending_locations</code> с <code>client_id</code> (UUID v4), координатами, временем фикса.</li>
+<li>Лимит 5 000 точек или 7 дней. При переполнении сначала прореживаются стационарные точки, затем самые старые.</li>
+<li>Отправка пачками по 100, экспоненциальный backoff с джиттером: 5 с → 10 → 20 … максимум 5 мин. Сброс backoff при смене сети (connectivity_plus) и при выходе приложения на передний план.</li>
+<li>Сервер идемпотентен (<code>unique(child_id, client_id, recorded_at)</code>, <code>ON CONFLICT DO NOTHING</code>), принимает точки до 7 дней назад и не далее 5 минут в будущее. Last location обновляется только для более свежей точки, поэтому досланная старая история не «прыгает» на карте.</li>
+</ul>
+</section>
+
+<section id="geofence">
+<h2><span class="n">10</span>Система геозон</h2>
+<p>Зоны — круги (центр и радиус 50–2 000 м) с типами Дом, Школа, Спортзал, Другое. Полигоны появятся позже вместе с PostGIS.</p>
+<ul>
+<li><b>Где вычисляется:</b> на сервере при приёме каждой пачки, по самой свежей точке ребёнка. Это одна логика для Android и iOS, и не нужно доверять клиенту. Нативные геозоны ОС используются для пробуждения устройства (будет в 1.1).</li>
+<li><b>Гистерезис против «дребезга»:</b> вход засчитывается, когда <code>distance + accuracy·0,5 &lt; radius</code>, а выход — когда <code>distance − accuracy·0,5 &gt; radius + max(30 м, 0,15·radius)</code>. Точки с accuracy больше радиуса не меняют состояние.</li>
+<li><b>Подтверждение:</b> выход фиксируется только при двух точках подряд снаружи или одной с accuracy &lt; 30 м. Это убирает ложные выходы из школы из-за отражений сигнала.</li>
+<li><b>Хранение:</b> <code>geofence_states</code> — текущее состояние, обновляется атомарно (<code>UPDATE … WHERE inside IS DISTINCT FROM $new RETURNING</code>), так что при параллельных pod-ах событие создаётся ровно один раз.</li>
+<li><b>Уведомления:</b> «Олена прийшла до зони Школа · 08:12», «Олена вийшла із зони Дім · 07:45». Тихие часы для геозон настраиваются, SOS их игнорирует.</li>
+<li>При создании зоны начальное состояние вычисляется сразу, чтобы первая точка не дала ложный «вход».</li>
+</ul>
+</section>
+
+<section id="auth">
+<h2><span class="n">11</span>Аутентификация и авторизация</h2>
+<h3>Токены</h3>
+<ul>
+<li><b>Access token:</b> JWT (EdDSA или HS512 в MVP), TTL 15 минут, claims <code>sub</code>, <code>role</code>, <code>did</code> (device id), <code>jti</code>.</li>
+<li><b>Refresh token:</b> 256-битный случайный opaque-токен, в БД хранится только SHA-256-хэш. TTL 60 дней для родителя и 180 дней для ребёнка (ребёнок не должен «выпадать»). Ротация при каждом использовании: если старый токен из той же цепочки предъявлен повторно, вся цепочка отзывается (детект кражи).</li>
+<li><b>Привязка к устройству:</b> каждый refresh-токен принадлежит строке <code>devices</code>. Отзыв устройства отзывает его токены и сразу закрывает его WebSocket. Каждый запрос проверяет, что <code>did</code> не отозван (кэш в Redis на 60 с).</li>
+<li>На устройстве токены хранятся в Keychain / Android Keystore (flutter_secure_storage). На этапе 1.1 добавляется ключевая пара устройства в Secure Enclave/StrongBox и подпись refresh-запросов (proof of possession, по аналогии с DPoP).</li>
+</ul>
+<h3>Приглашение ребёнка</h3>
+<pre class="mermaid">
+sequenceDiagram
+  participant P as Родитель
+  participant S as Сервер
+  participant C as Ребёнок
+  P->>S: POST /children/:id/invites
+  S-->>P: code K7M2-QX9D, qr = dmd://invite?c=K7M2QX9D, expires 24h
+  P->>C: показывает QR / диктует код
+  C->>S: POST /invites/redeem {code, device, consent}
+  S->>S: rate limit IP+устройство, hash lookup, TTL, single use
+  S-->>C: tokens + профиль ребёнка + список родителей
+  S-->>P: WS child.presence + push "Олена під'єдналась"
+</pre>
+<ul>
+<li>Код: 8 символов алфавита Crockford base32 без похожих символов (около 40 бит). В БД хранится HMAC-SHA256 кода с серверным pepper, а не сам код.</li>
+<li>Защита от перебора: 5 попыток в минуту и 20 в час на IP и на установку (Redis sliding window), глобальный лимит неудачных redeem, TTL 24 часа, одноразовость. Перебор 2<sup>40</sup> при таких лимитах нереален.</li>
+<li>Новый код инвалидирует предыдущие неиспользованные коды этого ребёнка.</li>
+</ul>
+<h3>Модель доступа</h3>
+<div class="tbl"><table>
+<thead><tr><th>Действие</th><th>Владелец</th><th>Родитель</th><th>Ребёнок</th></tr></thead>
+<tbody>
+<tr><td>Видеть детей семьи на карте, историю</td><td>✓</td><td>✓</td><td>—</td></tr>
+<tr><td>Видеть других детей / других родителей на карте</td><td colspan="3">— (родители друг друга не трекают в MVP)</td></tr>
+<tr><td>Добавлять детей, геозоны, приглашения</td><td>✓</td><td>✓</td><td>—</td></tr>
+<tr><td>Приглашать / удалять родителей, удалять семью</td><td>✓</td><td>—</td><td>—</td></tr>
+<tr><td>Отправлять локации, SOS, ставить паузу</td><td>—</td><td>—</td><td>✓ (только свои)</td></tr>
+<tr><td>Видеть, кто его видит</td><td>—</td><td>—</td><td>✓</td></tr>
+</tbody></table></div>
+<p>Реализация: guard проверяет роль из JWT, а затем каждый сервис проверяет членство через <code>FamilyAccessService.assertParentOf(userId, childId)</code>. Проверка ресурса всегда на сервере, ID из URL никогда не считается доказательством доступа.</p>
+</section>
+
+<section id="security">
+<h2><span class="n">12</span>Модель безопасности и правовые требования</h2>
+<h3>Транспорт и данные</h3>
+<ul>
+<li>TLS 1.3 (минимум 1.2), HSTS, certificate pinning в приложениях (SPKI-хэш двух ключей, основной и резервный).</li>
+<li>Координаты в истории и в SOS шифруются AES-256-GCM на уровне приложения. Ключ данных хранится в KMS (AWS KMS / GCP KMS / HashiCorp Vault), в MVP — в переменной окружения, есть версия ключа и ротация. Дамп базы без ключа бесполезен.</li>
+<li>Пароли — argon2id (m=19 MiB, t=2, p=1 по рекомендации OWASP).</li>
+<li>Секреты только в env / secret manager, в репозитории есть <code>.env.example</code>.</li>
+</ul>
+<h3>End-to-end шифрование: честная оценка</h3>
+<p>Полное E2E (ребёнок шифрует координаты публичными ключами родителей, сервер видит только шифротекст) сильнее защищает от утечки на сервере, но ломает серверные геозоны, push с адресом и восстановление доступа при потере телефона родителя. Решение:</p>
+<ul>
+<li><b>MVP:</b> TLS + шифрование на уровне приложения + строгая модель доступа + короткое хранение. Это уровень Life360/Findmykids, но с шифрованием истории.</li>
+<li><b>Версия 2.0 — «Приватний режим» (Premium):</b> семейный ключ X25519, распределяемый между устройствами семьи (по образцу MLS / Signal sender keys), геозоны вычисляются на устройстве ребёнка, а сервер получает только факт «вход в зону #3» и шифротекст координат. SOS-уведомление при этом содержит только «SOS», а координаты расшифровываются на телефоне родителя.</li>
+</ul>
+<h3>Защита API</h3>
+<ul>
+<li>Rate limiting: глобально по IP, по пользователю, отдельные жёсткие лимиты на <code>/auth/*</code> и <code>/invites/redeem</code> (Redis).</li>
+<li>Валидация всех DTO (class-validator, whitelist + forbidNonWhitelisted), лимит размера тела 256 КБ, helmet, CORS закрыт (мобильный клиент).</li>
+<li>Защита от IDOR (см. модель доступа), UUID вместо последовательных ID.</li>
+<li>Аудит-лог: вход, refresh-reuse, создание/использование приглашений, отзыв устройств, экспорт, удаление, просмотр истории, SOS. Координаты в аудит-лог не пишутся.</li>
+<li>Антиабьюз: приглашение ребёнка всегда видно ребёнку, нельзя подключить телефон взрослого «тайно». Ребёнок 14+ (и любой пользователь детского приложения) может выйти из семьи, и родители об этом узнают. Это защищает от использования продукта для слежки за партнёром.</li>
+<li>Плановое: Play Integrity / App Attest для детского приложения, внешний пентест перед публичным запуском.</li>
+</ul>
+
+<h3>Законодательство: Украина</h3>
+<ul>
+<li><b>Закон Украины «О защите персональных данных» №2297-VI.</b> Нужны правовое основание (согласие или договор), уведомление субъекта о целях, сроках и правах, минимизация. Надзорный орган — Уполномоченный Верховной Рады по правам человека.</li>
+<li><b>Данные особого риска.</b> Типовой порядок обработки ПД (приказ Омбудсмана №1/02-14) относит данные о местонахождении и путях перемещения лица к обработке, представляющей особый риск. Это означает уведомление Уполномоченного о такой обработке и назначение ответственного лица или подразделения по защите ПД. Точные формулировки и процедуру уведомления нужно проверить с украинским юристом до запуска.</li>
+<li><b>Дети.</b> По Гражданскому кодексу за ребёнка до 14 лет действуют родители (законные представители), они и дают согласие. Ребёнок 14–18 лет имеет неполную дееспособность, поэтому мы спрашиваем его собственное согласие в детском приложении в дополнение к согласию родителя. Также учитываем ст. 16 Конвенции ООН о правах ребёнка (право на частную жизнь).</li>
+<li><b>Законопроект №8153</b> о новом законе о защите ПД, приближенном к GDPR, находится на рассмотрении. Проектирование сразу под GDPR снимает риск переделок.</li>
+<li><b>Язык:</b> обслуживание потребителей на государственном языке, интерфейс на украинском по умолчанию.</li>
+<li><b>Санкции:</b> никаких российских SDK, сервисов и облаков.</li>
+<li><b>Военное время:</b> история перемещений может иметь разведывательную ценность. Поэтому короткое хранение, шифрование, отказ от публичных ссылок на маршрут, хостинг вне досягаемости агрессора.</li>
+</ul>
+<h3>GDPR</h3>
+<p>GDPR применим, если компания в ЕС или если продукт ориентирован на людей в ЕС (ст. 3(2)). Для украинских семей, где дети живут в Польше, Германии или Чехии, это так.</p>
+<ul>
+<li>Основание: согласие родителя (ст. 6(1)(a), ст. 8 — возраст цифрового согласия от 13 до 16 лет в зависимости от страны). Договор (ст. 6(1)(b)) — для аккаунта родителя.</li>
+<li>DPIA (ст. 35) обязательна: систематический мониторинг и данные детей.</li>
+<li>Privacy by design and default (ст. 25): минимальные сроки, история выключается, пауза доступна.</li>
+<li>Права субъекта: доступ и экспорт (<code>GET /me/export</code>), удаление (<code>DELETE /me</code>), исправление, отзыв согласия (выход из семьи).</li>
+<li>Договоры обработки данных (DPA) с облаком, FCM и SMS-провайдером; хранение в ЕС; SCC для передачи в США (Firebase).</li>
+<li>Уведомление об инциденте в течение 72 часов: процесс в runbook.</li>
+<li>Политика конфиденциальности, понятная ребёнку: отдельный короткий текст на детском экране.</li>
+</ul>
+</section>
+
+<section id="push">
+<h2><span class="n">13</span>Архитектура push-уведомлений</h2>
+<ul>
+<li>Модуль <code>notifications</code> принимает доменные события (<code>geofence.transition</code>, <code>sos.raised</code>, <code>child.joined</code>, <code>sharing.paused</code>, <code>battery.low</code>) и кладёт задания в очередь BullMQ <code>push</code>. Воркер отправляет их через FCM HTTP v1 (firebase-admin).</li>
+<li>Текст локализуется на сервере по <code>locale</code> получателя (uk/ru/en).</li>
+<li>Токены хранятся на устройстве (<code>devices.push_token</code>). Ответы <code>UNREGISTERED</code> и <code>INVALID_ARGUMENT</code> очищают токен.</li>
+<li>Приоритеты:
+<div class="tbl"><table><thead><tr><th>Тип</th><th>Android</th><th>iOS</th></tr></thead><tbody>
+<tr><td>SOS</td><td>priority high, канал <code>sos</code> (IMPORTANCE_HIGH, свой звук тревоги, full-screen intent), повтор через 60 с до подтверждения</td><td><code>interruption-level: critical</code> (нужен entitlement Critical Alerts от Apple, заявку подаём заранее), фолбэк <code>time-sensitive</code></td></tr>
+<tr><td>Геозоны</td><td>high, канал <code>zones</code></td><td><code>time-sensitive</code></td></tr>
+<tr><td>Информационные</td><td>normal, канал <code>info</code></td><td><code>active</code></td></tr>
+<tr><td>Запрос локации ребёнку</td><td>data-only high priority</td><td>silent push (best-effort, iOS ограничивает) + WebSocket</td></tr>
+</tbody></table></div></li>
+<li>Местоположение по push не рассылается: обновления карты идут только по WebSocket, иначе push будут троттлиться и разряжать батарею.</li>
+<li>Без ключа Firebase в dev-окружении работает драйвер <code>log</code>, который пишет уведомления в лог.</li>
+</ul>
+</section>
+
+<section id="offline">
+<h2><span class="n">14</span>Offline mode</h2>
+<div class="grid2">
+<div class="card"><h4>Ребёнок</h4><ul>
+<li>Трекинг не зависит от сети: всё пишется в очередь SQLite</li>
+<li>Досылка с backoff, дедупликация на сервере</li>
+<li>SOS: очередь + SMS-композер после 15 секунд без ответа</li>
+<li>Индикатор «Немає з'єднання · 23 точки в черзі»</li>
+</ul></div>
+<div class="card"><h4>Родитель</h4><ul>
+<li>Кэш последних локаций и семьи (SQLite/Hive)</li>
+<li>Плашка «Дані станом на 14:32», статусы честно показывают возраст данных</li>
+<li>Кэш тайлов карты</li>
+<li>При восстановлении сети: REST-синхронизация, затем WebSocket</li>
+<li>Изменения настроек требуют сети (MVP), с понятной ошибкой</li>
+</ul></div>
+<div class="card"><h4>Статус ребёнка</h4><ul>
+<li><span class="pill ok">онлайн</span> контакт ≤ 5 мин (WS-соединение или точка)</li>
+<li><span class="pill warn">недавно</span> контакт ≤ 60 мин</li>
+<li><span class="pill crit">немає зв'язку</span> &gt; 60 мин; показываем последнюю точку и время</li>
+<li>В Stationary heartbeat раз в 15 мин держит статус «онлайн/недавно»</li>
+</ul></div>
+</div>
+</section>
+
+<section id="sos">
+<h2><span class="n">—</span>Сценарий SOS</h2>
+<pre class="mermaid">
+sequenceDiagram
+  participant C as Ребёнок
+  participant S as Сервер
+  participant P as Родители
+  C->>C: удержание 3 с (кольцо + вибро) → отсчёт 5 с с «Скасувати»
+  C->>C: Burst-режим трекинга, свежий фикс (≤ 10 с)
+  C->>S: POST /v1/sos {clientId, lat, lng, accuracy, battery}
+  S->>S: sos_events, шифрование координат, аудит
+  S-->>P: WS sos.raised + push critical (каждому родителю)
+  P->>S: POST /sos/:id/ack «Бачу, телефоную»
+  S-->>C: WS sos.updated → «Мама бачить твій сигнал»
+  Note over C,S: нет ответа сервера 15 с → SMS-композер с координатами
+  Note over S,P: нет ack 60 с → повтор push
+</pre>
+<ul>
+<li><b>Защита от случайного нажатия:</b> удержание 3 секунды с видимым прогрессом, затем 5 секунд отсчёта с большой кнопкой отмены. Отмена после отправки (<code>/sos/:id/cancel</code>) отправляет родителям «Помилкова тривога, все гаразд». Кнопку нельзя нажать в кармане: требуется разблокированный экран.</li>
+<li><b>Что получает родитель:</b> полноэкранная тревога с громким звуком, имя и аватар, карта с точкой, время, точность, батарея, маршрут за последние 30 минут, кнопки «Подзвонити», «Бачу», «Маршрут», «Викликати 112».</li>
+<li><b>Ребёнок в SOS:</b> трекинг каждые 5–10 с в течение 15 минут, отправка немедленно.</li>
+<li><b>Экстренные службы Украины:</b> 112 (единый номер), 101 (ДСНС), 102 (полиция), 103 (скорая), 104 (газ). Публичного API для приёма вызовов от приложений у этих служб нет. Корректная интеграция возможна только как звонок через системный dialer (<code>tel:112</code>) после явного подтверждения пользователя («Зателефонувати 112? Так / Ні»). При звонке с телефона ОС сама может передать координаты через AML (Advanced Mobile Location), если служба его поддерживает; поддержку AML в украинской системе 112 нужно уточнить в МВД/ДСНС. Никакого автоматического звонка.</li>
+<li>Будущее: партнёрство с охранными компаниями (группы быстрого реагирования) по договору с явным согласием семьи.</li>
+</ul>
+</section>
+
+<section id="ux">
+<h2><span class="n">—</span>UX главного экрана</h2>
+<div class="uxrow">
+<div class="phone" aria-label="Эскиз главного экрана родителя">
+  <div class="map">
+    <div class="pin" style="left:40px;top:50px"><div class="ava" style="background:#3b7be0">О</div><span class="tag">Олена · 2 хв</span></div>
+    <div class="pin" style="left:150px;top:110px"><div class="ava" style="background:#d9822b">М</div><span class="tag">Марко · 14:05</span></div>
+  </div>
+  <div class="row"><span class="dot" style="background:var(--ok)"></span><b>Олена</b><span style="margin-left:auto;color:var(--muted)">Школа · 🔋 76%</span></div>
+  <div class="row"><span class="dot" style="background:var(--warn)"></span><b>Марко</b><span style="margin-left:auto;color:var(--muted)">27 хв тому · 🔋 18%</span></div>
+  <div class="btns"><span>Історія</span><span>Подзвонити</span><span class="sos">SOS</span></div>
+</div>
+<div>
+<p>Карта на весь экран, снизу draggable bottom sheet со списком детей. Тап по ребёнку центрирует карту и раскрывает карточку: адрес (обратный геокодинг через провайдер карт), точность, время, батарея, кнопки «Історія», «Подзвонити» (<code>tel:</code> на номер ребёнка), «Оновити зараз».</p>
+<p>Стиль: спокойный синий как цвет доверия, тёплый жёлтый — для акцентов, красный — только для SOS. Крупные цели нажатия (≥ 48 dp), поддержка системного размера шрифта, тёмная тема.</p>
+<p>Детский экран: большой статус «Батьки бачать, де ти» с аватарами родителей, индикатор соединения, огромная кнопка SOS, «Надіслати де я», «Пауза» (если доступна). Без рекламы и без лишнего.</p>
+</div>
+</div>
+</section>
+
+<section id="money">
+<h2><span class="n">—</span>Монетизация (freemium, UAH)</h2>
+<div class="tbl"><table>
+<thead><tr><th></th><th>Безкоштовно</th><th>Преміум</th><th>Сім'я</th></tr></thead>
+<tbody>
+<tr><td>Цена</td><td class="num">0 ₴</td><td class="num">99 ₴/мес · 699 ₴/год</td><td class="num">149 ₴/мес · 999 ₴/год</td></tr>
+<tr><td>Дети / родители</td><td>1 / 2</td><td>3 / 2</td><td>до 6 / до 4</td></tr>
+<tr><td>Карта в реальном времени</td><td>✓</td><td>✓</td><td>✓</td></tr>
+<tr><td><b>SOS</b></td><td><b>✓</b></td><td>✓</td><td>✓</td></tr>
+<tr><td>История</td><td>24 часа</td><td>30 дней</td><td>30 дней</td></tr>
+<tr><td>Геозоны</td><td>1 (Дом)</td><td>без ограничений</td><td>без ограничений</td></tr>
+<tr><td>Режим тревоги, «Я в безпеці»</td><td>✓</td><td>✓</td><td>✓</td></tr>
+<tr><td>Статистика, отчёт за неделю, тихие часы, приватный режим (2.0)</td><td>—</td><td>✓</td><td>✓</td></tr>
+</tbody></table></div>
+<p class="note">Мы отклоняемся от предложенной схемы в одном пункте: <b>SOS и базовая тревога бесплатны всегда.</b> Платная кнопка тревоги в стране, где идёт война, — репутационный риск, а бесплатный SOS — главный довод скачать приложение и сильное отличие от конкурентов. Платим за удобство (история, зоны, несколько детей), а не за безопасность.</p>
+<h3>Экономика (оценка)</h3>
+<div class="tbl"><table>
+<thead><tr><th>Статья</th><th>Расчёт</th><th class="num">На 1 платящего / мес</th></tr></thead>
+<tbody>
+<tr><td>Средний чек</td><td>микс 40% месячных (99 ₴) и 60% годовых (699/12 = 58 ₴)</td><td class="num">≈ 74,5 ₴</td></tr>
+<tr><td>НДС 20% (магазины удерживают для Украины)</td><td>74,5 / 1,2</td><td class="num">≈ 62,1 ₴</td></tr>
+<tr><td>Комиссия стора 15% (Small Business Program / первые $1 млн)</td><td>62,1 × 0,85</td><td class="num">≈ 52,8 ₴</td></tr>
+<tr><td>Инфраструктура на семью (всех, не только платящих)</td><td>~$4 тыс./мес на 100 тыс. активных семей ≈ 1,7 ₴ на семью; при конверсии 6% — ~28 ₴ на платящего</td><td class="num">≈ −28 ₴</td></tr>
+<tr><td>Вклад до маркетинга и команды</td><td></td><td class="num">≈ 25 ₴</td></tr>
+</tbody></table></div>
+<p>При 100 тыс. активных семей и конверсии 6% выручка составит около 6 000 подписчиков × 52,8 ₴ ≈ 317 тыс. ₴ нетто в месяц (~$7,5 тыс. по курсу ~42 ₴/$), инфраструктура ~170 тыс. ₴. Выход на окупаемость команды требует 300–500 тыс. активных семей, роста конверсии до 8–10% через годовой тариф и B2B-канала: школы, мобильные операторы (бандлы «дитячий тариф + застосунок»), банки (детские карты). Ключевые метрики: D30 retention семьи, доля детей с устойчивым фоном (&gt;90% времени online/recent), trial→paid, CAC в Meta/TikTok-каналах родителей.</p>
+</section>
+
+<section id="mobile">
+<h2><span class="n">15 · 19</span>Структура Flutter-проекта</h2>
+<pre><code>mobile/
+├── lib/
+│   ├── main_parent.dart            # точка входа приложения родителя (flavor parent)
+│   ├── main_child.dart             # точка входа детского приложения (flavor child)
+│   ├── app/                        # MaterialApp, тема, роутинг (go_router), локализация
+│   ├── core/
+│   │   ├── config/env.dart         # API_URL и др. через --dart-define
+│   │   ├── network/                # Dio-клиент, интерсептор refresh-токена, ApiError
+│   │   ├── realtime/               # Socket.IO-клиент с переподключением
+│   │   ├── storage/                # secure storage (токены), SQLite
+│   │   ├── l10n/                   # форматирование дат/телефонов (uk_UA)
+│   │   └── map/                    # абстракция MapView + flutter_map-адаптер
+│   ├── features/
+│   │   ├── auth/                   # data / application / presentation
+│   │   ├── family/                 # семья, дети, приглашения (QR)
+│   │   ├── map/                    # главный экран родителя
+│   │   ├── history/                # маршрут за период
+│   │   ├── geofences/
+│   │   ├── sos/                    # SOS для родителя и ребёнка
+│   │   └── child_home/             # экран ребёнка, онбординг, согласие
+│   └── location/                   # LocationEngine, адаптивная политика, фильтры, очередь, sync
+├── l10n/  app_uk.arb · app_en.arb · app_ru.arb
+├── android/  (foreground service, разрешения, каналы уведомлений)
+├── ios/      (Info.plist: NSLocation*UsageDescription, UIBackgroundModes)
+└── test/     (unit-тесты политики, фильтров, очереди)</code></pre>
+<p>Слои внутри фичи: <code>data</code> (DTO, репозиторий, API), <code>application</code> (Riverpod-контроллеры), <code>presentation</code> (виджеты). Состояние — Riverpod, навигация — go_router, сеть — Dio, локальное хранилище — sqflite и flutter_secure_storage, realtime — socket_io_client.</p>
+</section>
+
+<section id="backend">
+<h2><span class="n">18</span>Структура backend-проекта</h2>
+<pre><code>backend/
+├── src/
+│   ├── main.ts                    # bootstrap: helmet, validation, versioning, shutdown hooks
+│   ├── app.module.ts
+│   ├── config/                    # схема env (zod), типизированный ConfigService
+│   ├── common/                    # фильтр ошибок, guards, декораторы, crypto, rate limiter
+│   ├── database/                  # Kysely, типы таблиц, миграции, партиции
+│   ├── redis/
+│   └── modules/
+│       ├── auth/                  # register/login/refresh/logout, JWT, refresh rotation
+│       ├── users/                 # /me, экспорт, удаление аккаунта
+│       ├── families/              # семья, дети, проверки доступа
+│       ├── invites/               # коды детей и родителей, защита от перебора
+│       ├── devices/               # устройства, push-токены, отзыв
+│       ├── locations/             # ingest, last location, история, presence
+│       ├── geofences/             # CRUD + движок переходов с гистерезисом
+│       ├── sos/
+│       ├── realtime/              # Socket.IO gateway, Redis adapter, комнаты
+│       ├── notifications/         # BullMQ-очередь, FCM/log-драйверы, локализация
+│       ├── audit/
+│       └── retention/             # партиции, очистка истории по тарифу
+├── test/                          # e2e (supertest + socket.io-client) на реальном Postgres/Redis
+├── docker-compose.yml · Dockerfile · .env.example
+</code></pre>
+</section>
+
+<section id="roadmap">
+<h2><span class="n">16 · 17</span>Roadmap и этапы</h2>
+<p>Оценка для команды: 1 backend, 2 Flutter, 1 дизайнер, 1 QA, product (part-time). Каждый этап заканчивается тем, что можно запустить и проверить.</p>
+<div class="tbl"><table>
+<thead><tr><th>Этап</th><th>Содержание</th><th>Как проверить</th><th class="num">Срок</th></tr></thead>
+<tbody>
+<tr><td><b>1. Backend core</b></td><td>Auth, семьи, дети, приглашения, устройства, аудит, rate limit</td><td><code>npm run test:e2e</code>, curl-сценарий</td><td class="num">2 нед.</td></tr>
+<tr><td><b>2. Backend realtime</b></td><td>Ingest локаций, шифрование, история, WebSocket, геозоны, SOS, push, retention</td><td>e2e-тесты, скрипт-симулятор ребёнка</td><td class="num">2 нед.</td></tr>
+<tr><td><b>3. Приложение родителя</b></td><td>Логин, семья, дети, QR, карта, статусы, история, геозоны, SOS-экран</td><td>Эмулятор + симулятор ребёнка</td><td class="num">3 нед.</td></tr>
+<tr><td><b>4. Детское приложение</b></td><td>Redeem, согласие, LocationEngine, очередь, SOS, пауза</td><td>Полевые тесты: Киев, метро, электричка, блэкаут</td><td class="num">3 нед.</td></tr>
+<tr><td><b>5. Hardening</b></td><td>Нативный LocationEngine (Kotlin/Swift), pinning, нагрузочный тест k6 (300 тыс. устройств), пентест, DPIA, политика конфиденциальности, уведомление Омбудсмана</td><td>Отчёты</td><td class="num">3 нед.</td></tr>
+<tr><td><b>6. Закрытая бета</b></td><td>200–500 семей, телеметрия батареи и «живучести» фона по моделям телефонов</td><td>Метрики</td><td class="num">3 нед.</td></tr>
+<tr><td><b>7. Публичный релиз 1.0</b></td><td>Подписки (Play Billing / StoreKit 2), онбординг, ASO</td><td></td><td class="num">2 нед.</td></tr>
+<tr><td><b>1.1</b></td><td>Режим тревоги (alerts.in.ua), «Я в безпеці», телефон + OTP, offline-карты</td><td></td><td class="num">+4 нед.</td></tr>
+<tr><td><b>2.0</b></td><td>Приватный режим E2E, полигоны, укрытия, часы, B2B</td><td></td><td class="num">+8 нед.</td></tr>
+</tbody></table></div>
+<p>Итого около 18 недель до публичного 1.0. Самый большой риск — живучесть фона на китайских Android-прошивках, поэтому полевые тесты начинаются уже на этапе 4, а не в бете.</p>
+</section>
+
+<section id="code">
+<h2><span class="n">20</span>Ключевой код MVP</h2>
+<p>Код пишется поэтапно в репозиторий <code>de-moi-dity/</code> (<code>backend/</code> на NestJS + TypeScript, <code>mobile/</code> на Flutter). Для каждого этапа есть README с командами запуска и проверки. Ключевые файлы:</p>
+<ul>
+<li><code>backend/src/modules/auth/auth.service.ts</code> — ротация refresh-токенов с детектом повторного использования</li>
+<li><code>backend/src/modules/invites/invites.service.ts</code> — коды приглашений, HMAC, защита от перебора</li>
+<li><code>backend/src/modules/locations/locations.service.ts</code> — идемпотентный batch-ingest, шифрование, last location, presence</li>
+<li><code>backend/src/modules/geofences/geofence-engine.ts</code> — переходы с гистерезисом</li>
+<li><code>backend/src/modules/sos/sos.service.ts</code> и <code>notifications/</code> — тревога и push</li>
+<li><code>mobile/lib/location/tracking_policy.dart</code> — адаптивная частота по движению и батарее</li>
+<li><code>mobile/lib/location/location_filter.dart</code> — фильтрация шума и Калман</li>
+<li><code>mobile/lib/location/location_queue.dart</code>, <code>sync_service.dart</code> — offline-очередь и досылка с backoff</li>
+</ul>
+</section>
+</main>
+</div>
