@@ -4,7 +4,9 @@
 set -euo pipefail
 API="${API:-http://localhost:3000}"
 EMAIL="${EMAIL:-parent+$(date +%s)@example.com}"
-DEVICE='{"platform":"android","model":"smoke"}'
+# A fake push token so the log push driver (PUSH_DRIVER=log) prints the parent's notifications.
+PUSH_TOKEN="smoke-parent-$(date +%s)-push-token"
+DEVICE="{\"platform\":\"android\",\"model\":\"smoke\",\"pushToken\":\"$PUSH_TOKEN\"}"
 
 req() { curl -sS --fail-with-body -H 'Content-Type: application/json' ${TOKEN:+-H "Authorization: Bearer $TOKEN"} "$@"; }
 
