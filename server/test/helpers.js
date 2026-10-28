@@ -15,19 +15,20 @@ export const fakeResolver = {
   },
 };
 
-export async function setup() {
+export async function setup({ mockSource = null, devToken = '' } = {}) {
   const pool = createPool(TEST_DB);
   await pool.query('DROP SCHEMA public CASCADE; CREATE SCHEMA public;');
   await migrate(pool);
   const notifier = memoryNotifier();
-  const app = buildApp({ pool, notifier, oblastResolver: fakeResolver });
+  const app = buildApp({ pool, notifier, oblastResolver: fakeResolver, mockSource }, { devToken });
   await app.ready();
   const call = async (method, url, { token, body } = {}) => {
     const res = await app.inject({
       method, url, payload: body,
       headers: token ? { authorization: `Bearer ${token}` } : {},
     });
-    return { status: res.statusCode, body: res.body ? res.json() : null };
+    const json = (res.headers['content-type'] ?? '').includes('json');
+    return { status: res.statusCode, body: res.body && json ? res.json() : res.body || null };
   };
   return { pool, notifier, app, call, close: async () => { await app.close(); await pool.end(); } };
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 import 'screens/child/child_home.dart';
@@ -50,7 +51,10 @@ class _MoiDityAppState extends State<MoiDityApp> {
     return MaterialApp(
       title: 'Мої діти',
       debugShowCheckedModeBanner: false,
+      // Інтерфейс лише українською, включно з системними діалогами (календар тощо)
       locale: const Locale('uk'),
+      supportedLocales: const [Locale('uk')],
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF0057B7)),
         useMaterial3: true,
