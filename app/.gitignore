@@ -46,3 +46,7 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Конфіг Firebase кожен кладе собі сам (див. README)
+android/app/google-services.json
+lib/firebase_options.dart
