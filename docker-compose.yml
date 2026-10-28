@@ -1,0 +1,21 @@
+# Локальний запуск сервера з базою: docker compose up --build
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: moi
+      POSTGRES_PASSWORD: moi
+      POSTGRES_DB: moi
+    volumes:
+      - db-data:/var/lib/postgresql/data
+  server:
+    build: ./server
+    env_file: ./server/.env
+    environment:
+      DATABASE_URL: postgres://moi:moi@db:5432/moi
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+volumes:
+  db-data:
