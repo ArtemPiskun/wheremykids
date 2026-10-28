@@ -9,13 +9,15 @@ flutter pub get
 flutter run --dart-define=API_URL=http://10.0.2.2:8080   # емулятор + локальний сервер
 ```
 
-## Пуші (Firebase)
+## Пуші (Firebase, проєкт `my-kids-1f72d`)
 
-Без Firebase застосунок працює, але без пушів. Щоб увімкнути:
+1. Firebase Console → Project settings → General → **Add app → Android**, package name `ua.moidity.moi_dity`
+   (SHA-1 для пушів не потрібен).
+2. Завантажте **google-services.json** і покладіть у `android/app/google-services.json`.
+   Gradle підключить плагін Google Services автоматично, коли файл на місці.
+3. Ключ сервера — див. `server/README` / кореневий README.
 
-1. Створіть проєкт у Firebase Console і додайте Android-застосунок `ua.moidity.moi_dity`.
-2. Виконайте `flutterfire configure` (або покладіть `google-services.json` в `android/app/` і підключіть плагін `com.google.gms.google-services`).
-3. Ключ сервісного акаунта покладіть на сервер (`GOOGLE_APPLICATION_CREDENTIALS`).
+Без `google-services.json` застосунок збирається й працює, але без пушів.
 
 ## Що всередині
 

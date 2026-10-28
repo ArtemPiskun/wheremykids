@@ -4,6 +4,12 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// Пуші працюють лише з google-services.json з консолі Firebase (проєкт my-kids-1f72d).
+// Без файлу застосунок збирається й працює, але без пушів.
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+}
+
 android {
     namespace = "ua.moidity.moi_dity"
     compileSdk = flutter.compileSdkVersion

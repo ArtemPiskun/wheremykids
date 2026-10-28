@@ -37,7 +37,13 @@ npm test                    # потрібен PostgreSQL з базою moi_test
 
 - **Токен alerts.in.ua** — заявка на https://alerts.in.ua/api-request
 - **Межі областей** — GeoJSON ADM1 України, напр. geoBoundaries (`geoBoundaries-UKR-ADM1_simplified.geojson`, ліцензія CC BY 4.0) → `OBLAST_GEOJSON_PATH`. Тимчасово можна `USE_NOMINATIM=1`.
-- **Firebase** — ключ сервісного акаунта для пушів → `GOOGLE_APPLICATION_CREDENTIALS`.
+- **Firebase** (проєкт `my-kids-1f72d`) — ключ сервісного акаунта для пушів:
+  Firebase Console → Project settings → **Service accounts** → **Generate new private key**.
+  Збережіть як `server/firebase-service-account.json` (у git не потрапить) і впишіть шлях у
+  `GOOGLE_APPLICATION_CREDENTIALS`, або весь JSON у base64 у `FIREBASE_SERVICE_ACCOUNT_BASE64`.
+  Перевірка: `npm run check-firebase`. Також у Project settings → **Cloud Messaging** має бути
+  увімкнено «Firebase Cloud Messaging API (V1)».
+  Для Android-застосунку потрібен ще `google-services.json` — див. `app/README.md`.
 
 ### API
 

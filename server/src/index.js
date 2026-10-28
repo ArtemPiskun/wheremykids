@@ -5,7 +5,7 @@ import { buildApp } from './app.js';
 import { startPoller } from './alerts/poller.js';
 import { alertsInUaSource } from './alerts/source.js';
 import { loadGeojsonResolver, nominatimResolver, nullResolver } from './geo/oblastResolver.js';
-import { fcmNotifier, logNotifier } from './notify/push.js';
+import { fcmNotifier, loadServiceAccount, logNotifier } from './notify/push.js';
 
 const config = loadConfig();
 const pool = createPool(config.databaseUrl);
@@ -16,10 +16,13 @@ if (config.oblastGeojsonPath) oblastResolver = await loadGeojsonResolver(config.
 else if (config.useNominatim) oblastResolver = nominatimResolver();
 
 const consoleLog = { info: (obj, text) => console.log(text, JSON.stringify(obj)) };
-const notifier = config.firebaseCredentialsPath ? await fcmNotifier(config.firebaseCredentialsPath) : logNotifier(consoleLog);
+const serviceAccount = await loadServiceAccount(config);
+const notifier = serviceAccount ? await fcmNotifier(serviceAccount) : logNotifier(consoleLog);
 
 const app = buildApp({ pool, notifier, oblastResolver }, { logger: true });
 
+if (serviceAccount) app.log.info(`Пуші через Firebase, проєкт ${serviceAccount.project_id}`);
+else app.log.warn('Ключ Firebase не задано: пуші лише пишуться в лог');
 if (oblastResolver === nullResolver) app.log.warn('Джерело меж областей не задано (OBLAST_GEOJSON_PATH або USE_NOMINATIM=1): тривоги по дітях не надсилатимуться');
 
 let stopPoller = () => {};

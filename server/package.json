@@ -9,9 +9,10 @@
     "node": ">=22"
   },
   "scripts": {
-    "start": "node src/index.js",
-    "migrate": "node src/migrate.js",
-    "test": "node --test --test-concurrency=1 test/*.test.js"
+    "start": "node --env-file-if-exists=.env src/index.js",
+    "migrate": "node --env-file-if-exists=.env src/migrate.js",
+    "test": "node --test --test-concurrency=1 test/*.test.js",
+    "check-firebase": "node --env-file-if-exists=.env src/check-firebase.js"
   },
   "dependencies": {
     "fastify": "^5.12.7",

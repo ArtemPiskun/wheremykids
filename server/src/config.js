@@ -9,6 +9,9 @@ export function loadConfig(env = process.env) {
     oblastGeojsonPath: env.OBLAST_GEOJSON_PATH ?? '',
     useNominatim: env.USE_NOMINATIM === '1',
     firebaseCredentialsPath: env.GOOGLE_APPLICATION_CREDENTIALS ?? '',
+    // Альтернатива файлу для хостингів без файлової системи: увесь JSON ключа в base64
+    firebaseCredentialsBase64: env.FIREBASE_SERVICE_ACCOUNT_BASE64 ?? '',
+    firebaseProjectId: env.FIREBASE_PROJECT_ID ?? 'my-kids-1f72d',
     locationRetentionDays: Number(env.LOCATION_RETENTION_DAYS ?? 30),
   };
 }

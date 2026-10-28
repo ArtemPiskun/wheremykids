@@ -143,3 +143,13 @@ test('геозона: перевірка радіуса', async () => {
   const res = await call('POST', '/v1/geofences', { token: f.parent.token, body: { name: 'Дім', lat: 50, lon: 30, radiusM: 10 } });
   assert.equal(res.status, 400);
 });
+
+test('недійсний FCM-токен забувається після відмови FCM', async () => {
+  const { call, pool } = t;
+  const f = await family(call);
+  t.notifier.dead.add(f.parentFcm);
+  await call('POST', '/v1/child/sos', { token: f.childToken, body: {} });
+  const { rows } = await pool.query('SELECT fcm_token FROM devices WHERE parent_id = $1', [f.parent.parentId]);
+  assert.equal(rows[0].fcm_token, null);
+  t.notifier.dead.clear();
+});
