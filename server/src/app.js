@@ -5,6 +5,9 @@ import { ingestLocations } from './services/locations.js';
 import { notifyParents, notifyChild } from './notify/fanout.js';
 import { msg } from './notify/messages.js';
 import { OBLASTS, OBLAST_BY_UID } from './alerts/oblasts.js';
+import { publicFamilyRoutes, parentFamilyRoutes } from './routes/family.js';
+import { parentChatRoutes, childChatRoutes } from './routes/chat.js';
+import { devRoutes } from './routes/dev.js';
 
 const PAIRING_TTL_MIN = 15;
 const MAX_POINTS_PER_BATCH = 500;
@@ -24,11 +27,13 @@ function childView(c) {
     oblast: c.oblast_uid == null ? null : { uid: c.oblast_uid, title: OBLAST_BY_UID.get(c.oblast_uid)?.title },
     alertStatus: c.alert_status ?? 'N',
     inShelterAt: c.in_shelter_at,
+    // Відколи координати недостовірні (глушіння/підміна GPS); lastLocation — останнє надійне місце
+    gpsUnreliableSince: c.gps_unreliable_since,
     paired: c.paired ?? false,
   };
 }
 
-// deps: { pool, notifier, oblastResolver }
+// deps: { pool, notifier, oblastResolver, mockSource? }
 export function buildApp(deps, opts = {}) {
   const { pool, notifier } = deps;
   const app = Fastify({ logger: opts.logger ?? false });
@@ -68,6 +73,9 @@ export function buildApp(deps, opts = {}) {
     return reply.code(201).send({ token, childId: child.id, childName: child.name });
   });
 
+  publicFamilyRoutes(app, deps);
+  if (deps.mockSource) devRoutes(app, { ...deps, devToken: opts.devToken });
+
   // Публічний довідник: поточний стан тривог по областях
   app.get('/v1/alerts', async () => {
     const { rows } = await pool.query('SELECT oblast_uid, status, changed_at FROM oblast_alerts');
@@ -93,6 +101,8 @@ export function buildApp(deps, opts = {}) {
     // ===== Батьки =====
     authed.register(async (p) => {
       p.addHook('preHandler', requireParent);
+      parentFamilyRoutes(p, deps);
+      parentChatRoutes(p, deps);
 
       const ownChild = async (req, reply) => {
         const { rows } = await pool.query('SELECT * FROM children WHERE id = $1 AND family_id = $2', [req.params.id, req.actor.familyId]);
@@ -154,7 +164,7 @@ export function buildApp(deps, opts = {}) {
         const from = req.query.from ?? new Date(Date.parse(to) - 24 * 3600e3).toISOString();
         const { rows } = await pool.query(
           `SELECT lat, lon, accuracy_m AS accuracy, battery_pct AS battery, recorded_at AS "recordedAt"
-           FROM locations WHERE child_id = $1 AND recorded_at BETWEEN $2 AND $3 ORDER BY recorded_at LIMIT 5000`,
+           FROM locations WHERE child_id = $1 AND quality = 'ok' AND recorded_at BETWEEN $2 AND $3 ORDER BY recorded_at LIMIT 5000`,
           [child.id, from, to]);
         return rows;
       });
@@ -208,6 +218,7 @@ export function buildApp(deps, opts = {}) {
     // ===== Пристрій дитини =====
     authed.register(async (c) => {
       c.addHook('preHandler', requireChild);
+      childChatRoutes(c, deps);
       const loadChild = async (req) => (await pool.query('SELECT * FROM children WHERE id = $1', [req.actor.childId])).rows[0];
 
       c.post('/v1/child/locations', {
@@ -224,6 +235,10 @@ export function buildApp(deps, opts = {}) {
                     accuracy: { type: 'number', minimum: 0 },
                     battery: { type: 'integer', minimum: 0, maximum: 100 },
                     recordedAt: { type: 'string', format: 'date-time' },
+                    // gps — супутники, network — вишки й Wi-Fi (запасний варіант при глушінні)
+                    source: { type: 'string', enum: ['gps', 'network', 'fused'] },
+                    // Android позначає координати від «фіктивного» провайдера
+                    mocked: { type: 'boolean' },
                   },
                 },
               },

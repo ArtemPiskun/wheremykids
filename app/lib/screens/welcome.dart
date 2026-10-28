@@ -56,6 +56,8 @@ class _ParentSignUp extends StatefulWidget {
 
 class _ParentSignUpState extends State<_ParentSignUp> {
   final _name = TextEditingController();
+  final _invite = TextEditingController();
+  bool _hasInvite = false;
   bool _busy = false;
   String? _error;
 
@@ -63,7 +65,11 @@ class _ParentSignUpState extends State<_ParentSignUp> {
     if (_name.text.trim().isEmpty) return;
     setState(() { _busy = true; _error = null; });
     try {
-      final token = await widget.api.registerParent(_name.text.trim());
+      final name = _name.text.trim();
+      // З кодом запрошення — приєднуємось до сім'ї іншого батька, інакше створюємо нову
+      final token = _hasInvite
+          ? (await widget.api.joinFamily(name, _invite.text.trim())).token
+          : await widget.api.registerParent(name);
       await widget.onSignedIn(Role.parent, token);
       if (mounted) Navigator.popUntil(context, (r) => r.isFirst);
     } catch (e) {
@@ -79,6 +85,19 @@ class _ParentSignUpState extends State<_ParentSignUp> {
         padding: const EdgeInsets.all(24),
         child: Column(children: [
           TextField(controller: _name, decoration: const InputDecoration(labelText: "Ваше ім'я"), textCapitalization: TextCapitalization.words),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            value: _hasInvite,
+            onChanged: (v) => setState(() => _hasInvite = v),
+            title: const Text('У мене є код запрошення від іншого батька'),
+          ),
+          if (_hasInvite)
+            TextField(
+              controller: _invite,
+              keyboardType: TextInputType.number,
+              maxLength: 6,
+              decoration: const InputDecoration(labelText: 'Код запрошення'),
+            ),
           if (_error != null) Padding(padding: const EdgeInsets.only(top: 12), child: Text(_error!, style: const TextStyle(color: Colors.red))),
           const SizedBox(height: 24),
           FilledButton(onPressed: _busy ? null : _submit, child: const Text('Продовжити')),

@@ -1,9 +1,10 @@
 // Запис події у стрічку сім'ї + пуш батькам (і за потреби дитині)
 
-export async function parentTokens(db, familyId) {
+export async function parentTokens(db, familyId, exceptParentId = null) {
   const { rows } = await db.query(
     `SELECT d.fcm_token FROM devices d JOIN parents p ON p.id = d.parent_id
-     WHERE p.family_id = $1 AND d.fcm_token IS NOT NULL`, [familyId]);
+     WHERE p.family_id = $1 AND d.fcm_token IS NOT NULL AND ($2::uuid IS NULL OR p.id <> $2)`,
+    [familyId, exceptParentId]);
   return rows.map((r) => r.fcm_token);
 }
 
@@ -13,7 +14,7 @@ export async function childTokens(db, childId) {
 }
 
 // Надсилає пуш і забуває токени, які FCM назвав недійсними
-async function push(db, notifier, tokens, message) {
+export async function push(db, notifier, tokens, message) {
   const dead = (await notifier.send(tokens, message)) ?? [];
   if (dead.length) await db.query('UPDATE devices SET fcm_token = NULL WHERE fcm_token = ANY($1)', [dead]);
 }

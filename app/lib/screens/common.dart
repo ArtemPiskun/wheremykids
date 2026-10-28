@@ -33,3 +33,27 @@ String alertLabel(String status) => switch (status) {
 void showError(BuildContext context, Object e) {
   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
 }
+
+/// Попередження, коли GPS дитини глушать або підміняють
+class GpsWarning extends StatelessWidget {
+  const GpsWarning({super.key, required this.since, required this.lastGood});
+  final DateTime since;
+  final DateTime? lastGood;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(color: Colors.amber.shade100, borderRadius: BorderRadius.circular(8)),
+      child: Row(children: [
+        const Icon(Icons.gps_off, color: Colors.brown),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text('GPS ненадійний з ${DateFormat('HH:mm', 'uk').format(since)} (ймовірно, глушіння). '
+              'Показуємо останнє надійне місце: ${ago(lastGood)}.'),
+        ),
+      ]),
+    );
+  }
+}

@@ -3,7 +3,7 @@ import { createPool } from './db.js';
 import { migrate } from './migrate.js';
 import { buildApp } from './app.js';
 import { startPoller } from './alerts/poller.js';
-import { alertsInUaSource } from './alerts/source.js';
+import { alertsInUaSource, mockAlertsSource } from './alerts/source.js';
 import { loadGeojsonResolver, nominatimResolver, nullResolver } from './geo/oblastResolver.js';
 import { fcmNotifier, loadServiceAccount, logNotifier } from './notify/push.js';
 
@@ -19,19 +19,26 @@ const consoleLog = { info: (obj, text) => console.log(text, JSON.stringify(obj))
 const serviceAccount = await loadServiceAccount(config);
 const notifier = serviceAccount ? await fcmNotifier(serviceAccount) : logNotifier(consoleLog);
 
-const app = buildApp({ pool, notifier, oblastResolver }, { logger: true });
+const mockSource = config.alertsMode === 'mock' ? mockAlertsSource() : null;
+const app = buildApp({ pool, notifier, oblastResolver, mockSource }, { logger: true, devToken: config.devToken });
 
 if (serviceAccount) app.log.info(`Пуші через Firebase, проєкт ${serviceAccount.project_id}`);
 else app.log.warn('Ключ Firebase не задано: пуші лише пишуться в лог');
-if (oblastResolver === nullResolver) app.log.warn('Джерело меж областей не задано (OBLAST_GEOJSON_PATH або USE_NOMINATIM=1): тривоги по дітях не надсилатимуться');
+if (oblastResolver === nullResolver) app.log.warn('Джерело меж областей вимкнено (задайте OBLAST_GEOJSON_PATH або приберіть USE_NOMINATIM=0): тривоги по дітях не надсилатимуться');
 
 let stopPoller = () => {};
-if (config.alertsToken) {
+if (mockSource) {
+  // Заглушка: на старті всюди відбій, далі тривоги вмикаються вручну на /dev/alerts
+  stopPoller = startPoller({ pool, notifier, source: mockSource, intervalMs: 3000, log: app.log });
+  app.log.warn(config.devToken
+    ? `Тривоги — заглушка. Керування: http://localhost:${config.port}/dev/alerts?token=<DEV_TOKEN>`
+    : 'Тривоги — заглушка, але DEV_TOKEN не задано: сторінка /dev/alerts вимкнена');
+} else if (config.alertsToken) {
   stopPoller = startPoller({
     pool, notifier, source: alertsInUaSource({ token: config.alertsToken }), intervalMs: config.alertsPollMs, log: app.log,
   });
 } else {
-  app.log.warn('ALERTS_IN_UA_TOKEN не задано: тривоги не опитуються');
+  app.log.warn('ALERTS_MODE=live, але ALERTS_IN_UA_TOKEN не задано: тривоги не опитуються');
 }
 
 // Раз на годину видаляємо старі точки, щоб не зберігати зайвого про дітей

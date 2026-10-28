@@ -27,6 +27,7 @@ class Child {
         oblast = j['oblast'] == null ? null : Oblast(j['oblast']['uid'], j['oblast']['title']),
         alertStatus = j['alertStatus'] ?? 'N',
         inShelterAt = j['inShelterAt'] == null ? null : DateTime.parse(j['inShelterAt']).toLocal(),
+        gpsUnreliableSince = j['gpsUnreliableSince'] == null ? null : DateTime.parse(j['gpsUnreliableSince']).toLocal(),
         paired = j['paired'] ?? false;
 
   final String id;
@@ -40,6 +41,9 @@ class Child {
   /// N — немає тривоги, A — тривога в області, P — часткова тривога
   final String alertStatus;
   final DateTime? inShelterAt;
+
+  /// Відколи координати недостовірні (глушіння GPS). Тоді lat/lon — останнє надійне місце.
+  final DateTime? gpsUnreliableSince;
   final bool paired;
 }
 
@@ -67,6 +71,32 @@ class FamilyEvent {
   final String? childName;
   final Map<String, dynamic> data;
   final DateTime createdAt;
+}
+
+class ChatMessage {
+  ChatMessage.fromJson(Map<String, dynamic> j)
+      : id = j['id'] is int ? j['id'] : int.parse('${j['id']}'),
+        text = j['text'],
+        fromChild = j['fromChild'],
+        senderName = j['senderName'] ?? '',
+        senderParentId = j['senderParentId'],
+        createdAt = DateTime.parse(j['createdAt']).toLocal();
+  final int id;
+  final String text;
+  final bool fromChild;
+  final String senderName;
+  final String? senderParentId;
+  final DateTime createdAt;
+}
+
+class FamilyMember {
+  FamilyMember.fromJson(Map<String, dynamic> j)
+      : id = j['id'],
+        name = j['name'],
+        isMe = j['isMe'] ?? false;
+  final String id;
+  final String name;
+  final bool isMe;
 }
 
 class TrackPoint {
@@ -105,8 +135,10 @@ class Api {
   Future<Child> addChild(String name) async => Child.fromJson(await _send('POST', '/v1/children', {'name': name}));
   Future<String> pairingCode(String childId) async => (await _send('POST', '/v1/children/$childId/pairing-code'))['code'];
   Future<void> ring(String childId) => _send('POST', '/v1/children/$childId/ring');
-  Future<List<TrackPoint>> track(String childId, DateTime from) async {
-    final list = await _send('GET', '/v1/children/$childId/locations?from=${Uri.encodeComponent(from.toUtc().toIso8601String())}') as List;
+  Future<List<TrackPoint>> track(String childId, DateTime from, [DateTime? to]) async {
+    final q = 'from=${Uri.encodeComponent(from.toUtc().toIso8601String())}'
+        '${to == null ? '' : '&to=${Uri.encodeComponent(to.toUtc().toIso8601String())}'}';
+    final list = await _send('GET', '/v1/children/$childId/locations?$q') as List;
     return list
         .map((j) => TrackPoint((j['lat'] as num).toDouble(), (j['lon'] as num).toDouble(), DateTime.parse(j['recordedAt']).toLocal()))
         .toList();
@@ -119,6 +151,26 @@ class Api {
   Future<void> deleteGeofence(String id) => _send('DELETE', '/v1/geofences/$id');
   Future<List<FamilyEvent>> events() async =>
       (await _send('GET', '/v1/events') as List).map((j) => FamilyEvent.fromJson(j)).toList();
+
+  // Сім'я: другий батько
+  Future<({String token, String familyId})> joinFamily(String name, String code) async {
+    final r = await _send('POST', '/v1/parents/join', {'name': name, 'code': code});
+    return (token: r['token'] as String, familyId: r['familyId'] as String);
+  }
+
+  Future<List<FamilyMember>> familyMembers() async =>
+      ((await _send('GET', '/v1/family'))['parents'] as List).map((j) => FamilyMember.fromJson(j)).toList();
+  Future<String> familyInvite() async => (await _send('POST', '/v1/family/invites'))['code'];
+
+  // Чат з дитиною (для батьків — childId, для дитини — null)
+  Future<List<ChatMessage>> messages({String? childId, int? after}) async {
+    final base = childId == null ? '/v1/child/messages' : '/v1/children/$childId/messages';
+    final list = await _send('GET', after == null ? base : '$base?after=$after') as List;
+    return list.map((j) => ChatMessage.fromJson(j)).toList();
+  }
+
+  Future<void> sendMessage(String text, {String? childId}) =>
+      _send('POST', childId == null ? '/v1/child/messages' : '/v1/children/$childId/messages', {'text': text});
 
   // Дитина
   Future<({String token, String childName})> pair(String code) async {

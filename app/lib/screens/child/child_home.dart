@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../services/api.dart';
 import '../../services/location_tracker.dart';
 import '../../services/storage.dart';
+import '../chat_screen.dart';
 import '../common.dart';
 
 /// Екран на телефоні дитини: статус тривоги, SOS і «Я в укритті».
@@ -87,7 +88,14 @@ class _ChildHomeState extends State<ChildHome> {
     final me = _me;
     final status = me?.alertStatus ?? 'N';
     return Scaffold(
-      appBar: AppBar(title: Text('Привіт, ${widget.storage.childName ?? ''}')),
+      appBar: AppBar(title: Text('Привіт, ${widget.storage.childName ?? ''}'), actions: [
+        IconButton(
+          tooltip: 'Чат з батьками',
+          icon: const Icon(Icons.chat_bubble_outline),
+          onPressed: () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) => ChatScreen(api: widget.api, title: 'Батьки'))),
+        ),
+      ]),
       body: RefreshIndicator(
         onRefresh: _refresh,
         child: ListView(

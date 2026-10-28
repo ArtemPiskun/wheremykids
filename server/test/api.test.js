@@ -44,14 +44,14 @@ test('точки: історія, останнє місце, область; с�
   const now = Date.now();
   const res = await call('POST', '/v1/child/locations', {
     token: f.childToken,
-    body: { points: [point(50.45, 30.52, { recordedAt: new Date(now - 60e3).toISOString(), battery: 80 }), point(50.0, 30.0, { recordedAt: new Date(now).toISOString(), battery: 79 })] },
+    body: { points: [point(50.45, 30.52, { recordedAt: new Date(now - 2 * 3600e3).toISOString(), battery: 80 }), point(50.0, 30.0, { recordedAt: new Date(now).toISOString(), battery: 79 })] },
   });
   assert.equal(res.status, 200);
   const late = await call('POST', '/v1/child/locations', { token: f.childToken, body: { points: [point(49.8, 24.0, { recordedAt: new Date(now - 120e3).toISOString() })] } });
   assert.equal(late.body.updated, false);
   const [kid] = (await call('GET', '/v1/children', { token: f.parent.token })).body;
   assert.deepEqual([kid.lastLocation.lat, kid.lastLocation.lon, kid.battery, kid.oblast.uid], [50.0, 30.0, 79, 14]);
-  const hist = (await call('GET', `/v1/children/${f.child.id}/locations?from=${new Date(now - 3600e3).toISOString()}`, { token: f.parent.token })).body;
+  const hist = (await call('GET', `/v1/children/${f.child.id}/locations?from=${new Date(now - 3 * 3600e3).toISOString()}`, { token: f.parent.token })).body;
   assert.equal(hist.length, 3);
 });
 
@@ -91,7 +91,7 @@ test('тривоги: перший запуск мовчить, далі пуш 
 
   // Дитина переїжджає у Львівську, де тривога вже триває
   t.notifier.sent.length = 0;
-  await call('POST', '/v1/child/locations', { token: f.childToken, body: { points: [point(49.84, 24.03)] } });
+  await call('POST', '/v1/child/locations', { token: f.childToken, body: { points: [point(49.84, 24.03, { recordedAt: new Date(Date.now() + 30 * 24 * 3600e3).toISOString() })] } });
   assert.equal(sentTo(f.parentFcm)[0].title, 'Дитина в зоні тривоги');
   assert.equal(sentTo(f.childFcm)[0].title, 'Повітряна тривога!');
 

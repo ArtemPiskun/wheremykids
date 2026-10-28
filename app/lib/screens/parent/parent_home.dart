@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../services/api.dart';
+import '../chat_screen.dart';
 import '../common.dart';
 import 'child_map.dart';
 import 'events_screen.dart';
@@ -19,6 +20,32 @@ class ParentHome extends StatefulWidget {
 class _ParentHomeState extends State<ParentHome> {
   int _tab = 0;
 
+  Future<void> _invite() async {
+    try {
+      final code = await widget.api.familyInvite();
+      final members = await widget.api.familyMembers();
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Запросити другого батька'),
+          content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('Нехай друга людина встановить «Мої діти», вибере «Я батько або мати», '
+                'увімкне «У мене є код запрошення» і введе:'),
+            const SizedBox(height: 16),
+            Center(child: SelectableText(code, style: const TextStyle(fontSize: 36, letterSpacing: 8, fontWeight: FontWeight.bold))),
+            const Center(child: Text('Код діє 24 години', style: TextStyle(color: Colors.grey))),
+            const SizedBox(height: 16),
+            Text('Зараз у сім\'ї: ${members.map((m) => m.isMe ? '${m.name} (ви)' : m.name).join(', ')}'),
+          ]),
+          actions: [FilledButton(onPressed: () => Navigator.pop(ctx), child: const Text('Готово'))],
+        ),
+      );
+    } catch (e) {
+      if (mounted) showError(context, e);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final pages = [
@@ -31,8 +58,11 @@ class _ParentHomeState extends State<ParentHome> {
         title: const Text('Мої діти'),
         actions: [
           PopupMenuButton<String>(
-            onSelected: (_) => widget.onSignOut(),
-            itemBuilder: (_) => const [PopupMenuItem(value: 'out', child: Text('Вийти'))],
+            onSelected: (v) => v == 'invite' ? _invite() : widget.onSignOut(),
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: 'invite', child: Text('Запросити другого батька')),
+              PopupMenuItem(value: 'out', child: Text('Вийти')),
+            ],
           ),
         ],
       ),
@@ -166,6 +196,13 @@ class _ChildrenTabState extends State<_ChildrenTab> {
               CircleAvatar(child: Text(c.name.characters.first)),
               const SizedBox(width: 12),
               Expanded(child: Text(c.name, style: Theme.of(context).textTheme.titleLarge)),
+              if (c.paired)
+                IconButton(
+                  tooltip: 'Чат',
+                  icon: const Icon(Icons.chat_bubble_outline),
+                  onPressed: () => Navigator.push(context,
+                      MaterialPageRoute(builder: (_) => ChatScreen(api: widget.api, title: c.name, childId: c.id))),
+                ),
               if (c.battery != null) ...[
                 Icon(c.battery! <= 15 ? Icons.battery_alert : Icons.battery_std, size: 18),
                 Text(' ${c.battery}%'),
@@ -176,6 +213,10 @@ class _ChildrenTabState extends State<_ChildrenTab> {
               const Text('Телефон дитини ще не під\'єднано. Натисніть, щоб отримати код.')
             else ...[
               Text('${c.oblast?.title ?? 'Область невідома'} · ${ago(c.seenAt)}'),
+              if (c.gpsUnreliableSince != null) ...[
+                const SizedBox(height: 8),
+                GpsWarning(since: c.gpsUnreliableSince!, lastGood: c.seenAt),
+              ],
               const SizedBox(height: 8),
               Row(children: [
                 Icon(Icons.circle, size: 12, color: alertColor(c.alertStatus)),

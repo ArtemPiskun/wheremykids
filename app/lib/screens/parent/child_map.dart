@@ -3,6 +3,9 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../../services/api.dart';
+import 'package:intl/intl.dart';
+
+import '../chat_screen.dart';
 import '../common.dart';
 
 /// Карта дитини: поточне місце, маршрут за сьогодні та геозони.
@@ -17,6 +20,26 @@ class ChildMapScreen extends StatefulWidget {
 class _ChildMapScreenState extends State<ChildMapScreen> {
   List<TrackPoint> _track = [];
   List<Geofence> _zones = [];
+  DateTime _day = DateUtils.dateOnly(DateTime.now());
+
+  bool get _isToday => _day == DateUtils.dateOnly(DateTime.now());
+
+  void _setDay(DateTime d) {
+    setState(() => _day = DateUtils.dateOnly(d));
+    _load();
+  }
+
+  Future<void> _pickDay() async {
+    final now = DateTime.now();
+    final d = await showDatePicker(
+      context: context,
+      initialDate: _day,
+      // Сервер зберігає історію 30 днів
+      firstDate: now.subtract(const Duration(days: 30)),
+      lastDate: now,
+    );
+    if (d != null) _setDay(d);
+  }
 
   @override
   void initState() {
@@ -26,8 +49,7 @@ class _ChildMapScreenState extends State<ChildMapScreen> {
 
   Future<void> _load() async {
     try {
-      final now = DateTime.now();
-      final track = await widget.api.track(widget.child.id, DateTime(now.year, now.month, now.day));
+      final track = await widget.api.track(widget.child.id, _day, _day.add(const Duration(days: 1)));
       final zones = await widget.api.geofences();
       if (mounted) setState(() { _track = track; _zones = zones; });
     } catch (e) {
@@ -49,7 +71,14 @@ class _ChildMapScreenState extends State<ChildMapScreen> {
     final c = widget.child;
     final here = c.lat == null ? null : LatLng(c.lat!, c.lon!);
     return Scaffold(
-      appBar: AppBar(title: Text(c.name)),
+      appBar: AppBar(title: Text(c.name), actions: [
+        IconButton(
+          tooltip: 'Чат',
+          icon: const Icon(Icons.chat_bubble_outline),
+          onPressed: () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) => ChatScreen(api: widget.api, title: c.name, childId: c.id))),
+        ),
+      ]),
       body: Column(children: [
         Material(
           color: alertColor(c.alertStatus).withValues(alpha: 0.12),
@@ -59,6 +88,19 @@ class _ChildMapScreenState extends State<ChildMapScreen> {
             subtitle: Text('${c.oblast?.title ?? 'Область невідома'} · оновлено ${ago(c.seenAt)}'),
           ),
         ),
+        if (c.gpsUnreliableSince != null)
+          Padding(padding: const EdgeInsets.fromLTRB(8, 8, 8, 0), child: GpsWarning(since: c.gpsUnreliableSince!, lastGood: c.seenAt)),
+        Row(children: [
+          IconButton(icon: const Icon(Icons.chevron_left), onPressed: () => _setDay(_day.subtract(const Duration(days: 1)))),
+          Expanded(
+            child: TextButton.icon(
+              onPressed: _pickDay,
+              icon: const Icon(Icons.calendar_today, size: 18),
+              label: Text(_isToday ? 'Маршрут за сьогодні' : 'Маршрут за ${DateFormat('d MMMM', 'uk').format(_day)}'),
+            ),
+          ),
+          IconButton(icon: const Icon(Icons.chevron_right), onPressed: _isToday ? null : () => _setDay(_day.add(const Duration(days: 1)))),
+        ]),
         Expanded(
           child: FlutterMap(
             options: MapOptions(
