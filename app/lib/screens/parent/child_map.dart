@@ -88,6 +88,8 @@ class _ChildMapScreenState extends State<ChildMapScreen> {
             subtitle: Text('${c.oblast?.title ?? 'Область невідома'} · оновлено ${ago(c.seenAt)}'),
           ),
         ),
+        if (c.gpsUnreliableSince != null)
+          Padding(padding: const EdgeInsets.fromLTRB(8, 8, 8, 0), child: GpsWarning(since: c.gpsUnreliableSince!, lastGood: c.seenAt)),
         Row(children: [
           IconButton(icon: const Icon(Icons.chevron_left), onPressed: () => _setDay(_day.subtract(const Duration(days: 1)))),
           Expanded(

@@ -213,6 +213,10 @@ class _ChildrenTabState extends State<_ChildrenTab> {
               const Text('Телефон дитини ще не під\'єднано. Натисніть, щоб отримати код.')
             else ...[
               Text('${c.oblast?.title ?? 'Область невідома'} · ${ago(c.seenAt)}'),
+              if (c.gpsUnreliableSince != null) ...[
+                const SizedBox(height: 8),
+                GpsWarning(since: c.gpsUnreliableSince!, lastGood: c.seenAt),
+              ],
               const SizedBox(height: 8),
               Row(children: [
                 Icon(Icons.circle, size: 12, color: alertColor(c.alertStatus)),

@@ -38,6 +38,7 @@ class _EventsScreenState extends State<EventsScreen> {
         'geofence_enter' => (Icons.login, Colors.teal, 'Прибуття'),
         'geofence_exit' => (Icons.logout, Colors.orange, 'Вихід із зони'),
         'low_battery' => (Icons.battery_alert, Colors.orange, 'Низький заряд'),
+        'gps_unreliable' => (Icons.gps_off, Colors.brown, 'GPS ненадійний (глушіння)'),
         _ => (Icons.info, Colors.grey, e.type),
       };
 

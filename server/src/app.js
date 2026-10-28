@@ -27,6 +27,8 @@ function childView(c) {
     oblast: c.oblast_uid == null ? null : { uid: c.oblast_uid, title: OBLAST_BY_UID.get(c.oblast_uid)?.title },
     alertStatus: c.alert_status ?? 'N',
     inShelterAt: c.in_shelter_at,
+    // Відколи координати недостовірні (глушіння/підміна GPS); lastLocation — останнє надійне місце
+    gpsUnreliableSince: c.gps_unreliable_since,
     paired: c.paired ?? false,
   };
 }
@@ -162,7 +164,7 @@ export function buildApp(deps, opts = {}) {
         const from = req.query.from ?? new Date(Date.parse(to) - 24 * 3600e3).toISOString();
         const { rows } = await pool.query(
           `SELECT lat, lon, accuracy_m AS accuracy, battery_pct AS battery, recorded_at AS "recordedAt"
-           FROM locations WHERE child_id = $1 AND recorded_at BETWEEN $2 AND $3 ORDER BY recorded_at LIMIT 5000`,
+           FROM locations WHERE child_id = $1 AND quality = 'ok' AND recorded_at BETWEEN $2 AND $3 ORDER BY recorded_at LIMIT 5000`,
           [child.id, from, to]);
         return rows;
       });
@@ -233,6 +235,10 @@ export function buildApp(deps, opts = {}) {
                     accuracy: { type: 'number', minimum: 0 },
                     battery: { type: 'integer', minimum: 0, maximum: 100 },
                     recordedAt: { type: 'string', format: 'date-time' },
+                    // gps — супутники, network — вишки й Wi-Fi (запасний варіант при глушінні)
+                    source: { type: 'string', enum: ['gps', 'network', 'fused'] },
+                    // Android позначає координати від «фіктивного» провайдера
+                    mocked: { type: 'boolean' },
                   },
                 },
               },

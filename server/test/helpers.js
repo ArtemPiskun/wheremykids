@@ -44,4 +44,10 @@ export async function family(call, childName = 'Марійка') {
   return { parent, child, childToken: paired.token, parentFcm: `parent-fcm-${parent.parentId}`, childFcm: `child-fcm-${child.id}` };
 }
 
-export const point = (lat, lon, extra = {}) => ({ lat, lon, accuracy: 10, recordedAt: new Date().toISOString(), ...extra });
+// Кожна наступна точка на 10 хв пізніша: інакше переміщення між ними виглядали б
+// як неможливі «стрибки» і відкидалися фільтром достовірності
+let clock = Date.now();
+export const point = (lat, lon, extra = {}) => {
+  clock += 10 * 60e3;
+  return { lat, lon, accuracy: 10, recordedAt: new Date(clock).toISOString(), ...extra };
+};

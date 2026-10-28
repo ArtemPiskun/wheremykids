@@ -5,6 +5,7 @@ import 'package:battery_plus/battery_plus.dart';
 import 'package:geolocator/geolocator.dart';
 
 import 'api.dart';
+import 'plausibility.dart';
 import 'storage.dart';
 
 /// Фонове відстеження на телефоні дитини.
@@ -17,6 +18,7 @@ class LocationTracker {
   final _battery = Battery();
   StreamSubscription<Position>? _sub;
   Position? last;
+  Fix? _lastGood;
 
   static const _maxBuffered = 2000;
 
@@ -50,7 +52,42 @@ class LocationTracker {
   Future<void> stop() async => _sub?.cancel();
 
   Future<void> _onPosition(Position p) async {
-    last = p;
+    final fix = Fix(p.latitude, p.longitude, p.accuracy, p.timestamp, mocked: p.isMocked);
+    if (!looksSpoofed(fix, _lastGood)) {
+      last = p;
+      _lastGood = fix;
+      await _record(p, 'fused');
+      return;
+    }
+    // GPS глушать або підміняють: надсилаємо цю точку з позначкою (сервер її відкине,
+    // а батьки побачать «GPS ненадійний») і пробуємо координати з вишок і Wi-Fi,
+    // яких РЕБ не торкається
+    await _record(p, 'gps');
+    final net = await _networkFix();
+    if (net != null && !looksSpoofed(Fix(net.latitude, net.longitude, net.accuracy, net.timestamp, mocked: net.isMocked), _lastGood)) {
+      last = net;
+      _lastGood = Fix(net.latitude, net.longitude, net.accuracy, net.timestamp);
+      await _record(net, 'network');
+    }
+  }
+
+  /// Місце за мережею: LocationManager з низькою точністю бере NETWORK_PROVIDER
+  /// (вишки + Wi-Fi) замість супутників.
+  Future<Position?> _networkFix() async {
+    try {
+      return await Geolocator.getCurrentPosition(
+        locationSettings: AndroidSettings(
+          accuracy: LocationAccuracy.low,
+          forceLocationManager: true,
+          timeLimit: const Duration(seconds: 20),
+        ),
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _record(Position p, String source) async {
     int? battery;
     try {
       battery = await _battery.batteryLevel;
@@ -61,6 +98,8 @@ class LocationTracker {
       'accuracy': p.accuracy,
       'battery': ?battery,
       'recordedAt': p.timestamp.toUtc().toIso8601String(),
+      'source': source,
+      'mocked': p.isMocked,
     };
     final pending = [...storage.pendingPoints, jsonEncode(point)];
     // Під час довгого блекауту зберігаємо лише найновіші точки

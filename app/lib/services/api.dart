@@ -27,6 +27,7 @@ class Child {
         oblast = j['oblast'] == null ? null : Oblast(j['oblast']['uid'], j['oblast']['title']),
         alertStatus = j['alertStatus'] ?? 'N',
         inShelterAt = j['inShelterAt'] == null ? null : DateTime.parse(j['inShelterAt']).toLocal(),
+        gpsUnreliableSince = j['gpsUnreliableSince'] == null ? null : DateTime.parse(j['gpsUnreliableSince']).toLocal(),
         paired = j['paired'] ?? false;
 
   final String id;
@@ -40,6 +41,9 @@ class Child {
   /// N — немає тривоги, A — тривога в області, P — часткова тривога
   final String alertStatus;
   final DateTime? inShelterAt;
+
+  /// Відколи координати недостовірні (глушіння GPS). Тоді lat/lon — останнє надійне місце.
+  final DateTime? gpsUnreliableSince;
   final bool paired;
 }
 

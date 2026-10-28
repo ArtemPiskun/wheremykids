@@ -1,34 +1,75 @@
 import { distanceM } from '../geo/distance.js';
 import { msg } from '../notify/messages.js';
-import { notifyParents, notifyChild } from '../notify/fanout.js';
+import { notifyParents, notifyChild, recordEvent } from '../notify/fanout.js';
+import { classifyPoint, MAX_GEOFENCE_ACCURACY_M } from '../geo/plausibility.js';
 import { getOblastStatus } from '../alerts/poller.js';
 
 const LOW_BATTERY_PCT = 15;
 const BATTERY_RESET_PCT = 30;
 
-// Обробка пачки точок від дитини: історія, заряд, геозони, область і тривога
+// Обробка пачки точок від дитини: перевірка достовірності, історія, заряд,
+// геозони, область і тривога. Під час тривог GPS часто глушать або підміняють,
+// тому стан дитини (місце, геозони, область) оновлюють лише надійні точки.
 export async function ingestLocations({ pool, notifier, oblastResolver }, childId, points) {
   const sorted = [...points].sort((a, b) => Date.parse(a.recordedAt) - Date.parse(b.recordedAt));
+  const { rows: [child] } = await pool.query('SELECT * FROM children WHERE id = $1', [childId]);
+  let lastGood = child.last_seen_at == null ? null : {
+    lat: child.last_lat, lon: child.last_lon, accuracy: child.last_accuracy_m, recordedAt: child.last_seen_at.toISOString(),
+  };
+  const { rows: jumpRows } = await pool.query(
+    `SELECT lat, lon, accuracy_m AS accuracy, recorded_at FROM locations
+     WHERE child_id = $1 AND reason = 'jump' AND recorded_at > COALESCE($2, '-infinity'::timestamptz)
+     ORDER BY recorded_at DESC LIMIT 5`, [childId, child.last_seen_at]);
+  const recentJumps = jumpRows.reverse().map((r) => ({ ...r, recordedAt: r.recorded_at.toISOString() }));
+
+  let newestGood = null;
+  let rejected = null;
   for (const p of sorted) {
+    const { quality, reason } = classifyPoint(p, lastGood, recentJumps);
     await pool.query(
-      `INSERT INTO locations(child_id, lat, lon, accuracy_m, battery_pct, recorded_at) VALUES ($1, $2, $3, $4, $5, $6)`,
-      [childId, p.lat, p.lon, p.accuracy ?? null, p.battery ?? null, p.recordedAt]);
+      `INSERT INTO locations(child_id, lat, lon, accuracy_m, battery_pct, recorded_at, quality, reason, source, mocked)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+      [childId, p.lat, p.lon, p.accuracy ?? null, p.battery ?? null, p.recordedAt, quality, reason, p.source ?? null, p.mocked ?? false]);
+    const newer = !lastGood || Date.parse(p.recordedAt) > Date.parse(lastGood.recordedAt);
+    if (quality === 'ok' && newer) {
+      lastGood = p;
+      newestGood = p;
+      recentJumps.length = 0;
+    } else if (quality === 'rejected' && newer) {
+      rejected = p;
+      if (reason === 'jump') recentJumps.push(p);
+    }
   }
-  const { rows } = await pool.query('SELECT * FROM children WHERE id = $1', [childId]);
-  const child = rows[0];
+
+  // Заряд справжній навіть тоді, коли координати підмінені
   const latest = sorted.at(-1);
+  const freshBatch = !child.last_seen_at || Date.parse(latest.recordedAt) > child.last_seen_at.getTime();
+  if (freshBatch && latest.battery != null) await pool.query('UPDATE children SET battery_pct = $2 WHERE id = $1', [childId, latest.battery]);
+  if (freshBatch) await checkBattery(pool, notifier, child, latest.battery);
+  await updateGpsFlag(pool, child, newestGood, rejected);
+
   // Точки з буфера (після відсутності зв'язку) можуть бути старшими за вже відомі
-  if (child.last_seen_at && Date.parse(latest.recordedAt) <= child.last_seen_at.getTime()) return { updated: false };
+  if (!newestGood) return { updated: false, gpsUnreliable: rejected != null || child.gps_unreliable_since != null };
 
   await pool.query(
-    `UPDATE children SET last_lat = $2, last_lon = $3, last_accuracy_m = $4, last_seen_at = $5,
-       battery_pct = COALESCE($6, battery_pct) WHERE id = $1`,
-    [childId, latest.lat, latest.lon, latest.accuracy ?? null, latest.recordedAt, latest.battery ?? null]);
+    `UPDATE children SET last_lat = $2, last_lon = $3, last_accuracy_m = $4, last_seen_at = $5 WHERE id = $1`,
+    [childId, newestGood.lat, newestGood.lon, newestGood.accuracy ?? null, newestGood.recordedAt]);
+  if ((newestGood.accuracy ?? 0) <= MAX_GEOFENCE_ACCURACY_M) await checkGeofences(pool, notifier, child, newestGood);
+  await checkOblast(pool, notifier, oblastResolver, child, newestGood);
+  return { updated: true, gpsUnreliable: false };
+}
 
-  await checkBattery(pool, notifier, child, latest.battery);
-  await checkGeofences(pool, notifier, child, latest);
-  await checkOblast(pool, notifier, oblastResolver, child, latest);
-  return { updated: true };
+// Позначка «GPS ненадійний»: з'являється з першою відкинутою точкою,
+// зникає з першою надійною, новішою за неї
+async function updateGpsFlag(pool, child, newestGood, rejected) {
+  const goodAfterBad = newestGood && (!rejected || Date.parse(newestGood.recordedAt) > Date.parse(rejected.recordedAt));
+  if (goodAfterBad && child.gps_unreliable_since) {
+    await pool.query('UPDATE children SET gps_unreliable_since = NULL WHERE id = $1', [child.id]);
+  } else if (rejected && !goodAfterBad && !child.gps_unreliable_since) {
+    await pool.query('UPDATE children SET gps_unreliable_since = $2 WHERE id = $1', [child.id, rejected.recordedAt]);
+    // Лише в стрічку, без пуша: під час тривоги це трапляється часто
+    await recordEvent(pool, { familyId: child.family_id, childId: child.id, type: 'gps_unreliable', data: {} });
+  }
 }
 
 async function checkBattery(pool, notifier, child, pct) {
