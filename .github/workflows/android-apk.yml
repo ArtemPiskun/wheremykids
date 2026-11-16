@@ -41,9 +41,12 @@ jobs:
             app/android/*.gradle*
             app/android/**/gradle-wrapper.properties
 
+      # Версія, на якій створено й перевірено застосунок (app/.metadata).
+      # У 3.50 package:flutter/material.dart став deprecated, і flutter analyze падає.
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version: 3.47.8
           cache: true
 
       - name: Залежності
