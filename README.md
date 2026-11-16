@@ -33,6 +33,8 @@ npm test                    # потрібен PostgreSQL з базою moi_test
 
 Або з Docker: `docker compose up --build` у корені.
 
+Викласти в інтернет (Render, ~$13/міс): покрокова інструкція в [docs/deploy-render.md](docs/deploy-render.md).
+
 Що потрібно отримати:
 
 - **Токен alerts.in.ua** — заявка на https://alerts.in.ua/api-request
